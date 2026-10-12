@@ -1,5 +1,6 @@
 package me.guivnf.mods.hats.mixin;
 
+import me.guivnf.mods.hats.HatsMod;
 import me.guivnf.mods.hats.client.gui.HatPlacementScreen;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -19,6 +20,8 @@ public abstract class MixinOptionsScreen extends Screen
     @Inject(method = "init", at = @At("TAIL"))
     private void hats$addButton(CallbackInfo ci)
     {
+        if (!HatsMod.getConfig().displayOptionsButton) return;
+
         OptionsScreen self = (OptionsScreen)(Object) this;
 
         AbstractWidget doneButton = null;

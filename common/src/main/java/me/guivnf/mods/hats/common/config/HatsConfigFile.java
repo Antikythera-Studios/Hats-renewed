@@ -113,6 +113,7 @@ public final class HatsConfigFile
             case "server.spawn_chance.legendary" -> cfg.rarityChances.put(HatRarity.LEGENDARY, parseDouble(value));
             case "client.max_hats_on_screen" -> cfg.maxHatRendersPerFrame = parseInt(value, cfg.maxHatRendersPerFrame);
             case "client.display_hat_unlock_toast" -> cfg.displayHatUnlockToast = parseBool(value);
+            case "client.display_options_button" -> cfg.displayOptionsButton = parseBool(value);
             default -> HatsMod.LOGGER.warn("Unknown hats.toml key: {}", path);
         }
     }
@@ -225,7 +226,12 @@ public final class HatsConfigFile
 
         sb.append("# If true, show the 'New Hat Unlocked!' toast popup when you pick\n");
         sb.append("# up a hat you didn't own. Default: true.\n");
-        sb.append("display_hat_unlock_toast = ").append(cfg.displayHatUnlockToast).append("\n");
+        sb.append("display_hat_unlock_toast = ").append(cfg.displayHatUnlockToast).append("\n\n");
+
+        sb.append("# If true, a 'Hats' button is shown next to 'Done' on the Options\n");
+        sb.append("# screen. It is the only way to open the Hat Placement Editor, so\n");
+        sb.append("# turn it back on if you need the editor. Default: true.\n");
+        sb.append("display_options_button = ").append(cfg.displayOptionsButton).append("\n");
 
         return sb.toString();
     }

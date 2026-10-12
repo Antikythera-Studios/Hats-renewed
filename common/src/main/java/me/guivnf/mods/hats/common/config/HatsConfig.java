@@ -74,6 +74,8 @@ public class HatsConfig
 
     public boolean displayHatUnlockToast = true;
 
+    public boolean displayOptionsButton = true;
+
     public Map<HatRarity, Double> rarityChances = new EnumMap<>(Map.of(
         HatRarity.COMMON,    0.10,
         HatRarity.UNCOMMON,  0.08,
