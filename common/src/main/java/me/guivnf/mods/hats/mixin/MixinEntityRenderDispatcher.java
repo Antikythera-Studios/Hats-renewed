@@ -56,6 +56,7 @@ public class MixinEntityRenderDispatcher
     {
         if (LayerHat.HAT_RENDERED_THIS_ENTITY.get()) return;
         if (!(entity instanceof LivingEntity living)) return;
+        if (LayerHat.isOwnFirstPersonView(entity)) return;
 
         HatPart hat = ClientHatCache.getEntityHat(entity.getUUID());
         if (hat == null || !hat.isShowing) return;

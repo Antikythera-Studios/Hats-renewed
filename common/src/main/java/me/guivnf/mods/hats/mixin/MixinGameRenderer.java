@@ -27,4 +27,14 @@ public abstract class MixinGameRenderer {
     private void hats$resetFrameCounter(net.minecraft.client.DeltaTracker deltaTracker, boolean renderLevel, CallbackInfo ci) {
         me.guivnf.mods.hats.client.render.LayerHat.resetFrameCounter();
     }
+
+    @Inject(method = "renderLevel(Lnet/minecraft/client/DeltaTracker;)V", at = @At("HEAD"))
+    private void hats$beginLevel(net.minecraft.client.DeltaTracker deltaTracker, CallbackInfo ci) {
+        me.guivnf.mods.hats.client.render.LayerHat.RENDERING_LEVEL.set(true);
+    }
+
+    @Inject(method = "renderLevel(Lnet/minecraft/client/DeltaTracker;)V", at = @At("RETURN"))
+    private void hats$endLevel(net.minecraft.client.DeltaTracker deltaTracker, CallbackInfo ci) {
+        me.guivnf.mods.hats.client.render.LayerHat.RENDERING_LEVEL.set(false);
+    }
 }

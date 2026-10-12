@@ -10,6 +10,7 @@ import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.mixin.accessor.AgeableHierarchicalModelAccessor;
 import me.guivnf.mods.hats.mixin.accessor.AgeableListModelAccessor;
 import me.guivnf.mods.hats.mixin.accessor.ModelPartAccessor;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.AgeableHierarchicalModel;
 import net.minecraft.client.model.AgeableListModel;
 import net.minecraft.client.model.EntityModel;
@@ -20,6 +21,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
 import org.jetbrains.annotations.Nullable;
@@ -54,6 +56,16 @@ public class LayerHat<T extends LivingEntity, M extends EntityModel<T>>
 
     public static final ThreadLocal<Boolean> RENDERING_HAT_GUI_PREVIEW = ThreadLocal.withInitial(() -> false);
 
+    public static final ThreadLocal<Boolean> RENDERING_LEVEL = ThreadLocal.withInitial(() -> false);
+
+    public static boolean isOwnFirstPersonView(Entity entity)
+    {
+        if (RENDERING_HAT_GUI_PREVIEW.get() || !RENDERING_LEVEL.get()) return false;
+
+        Minecraft mc = Minecraft.getInstance();
+        return entity == mc.getCameraEntity() && mc.options.getCameraType().isFirstPerson();
+    }
+
     private static int rendersThisFrame = 0;
 
     public static void resetFrameCounter()
@@ -77,6 +89,7 @@ public class LayerHat<T extends LivingEntity, M extends EntityModel<T>>
 
         HAT_RENDERED_THIS_ENTITY.set(true);
 
+        if (isOwnFirstPersonView(entity)) return;
         if (entity.isInvisible() && !HatsMod.getConfig().renderOnInvisible) return;
 
         HatPart hat = ClientHatCache.getEntityHat(entity.getUUID());
