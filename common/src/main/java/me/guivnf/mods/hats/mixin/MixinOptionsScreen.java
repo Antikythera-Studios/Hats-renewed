@@ -1,5 +1,6 @@
 package me.guivnf.mods.hats.mixin;
 
+import me.guivnf.mods.hats.HatsMod;
 import me.guivnf.mods.hats.client.gui.HatPlacementScreen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -22,6 +23,8 @@ public abstract class MixinOptionsScreen extends Screen
     @Inject(method = "init", at = @At("TAIL"))
     private void hats$addButton(CallbackInfo ci)
     {
+        if (!HatsMod.getConfig().displayOptionsButton) return;
+
         OptionsScreen self = (OptionsScreen)(Object) this;
 
         // Vanilla 1.21.1 places "Done" at (width/2 - 100, height - 27) via HeaderAndFooterLayout.
