@@ -38,11 +38,14 @@ public class NetworkHelper
         });
     }
 
-    public static void syncAllEntityHats(ServerPlayer player, HatsSavedData data)
+    public static void syncLoadedEntityHats(ServerPlayer player, HatsSavedData data)
     {
-        data.getAllEntityHats().forEach((uuid, hat) ->
+        ServerLevel level = player.serverLevel();
+        data.getAllEntityHats().forEach((uuid, hat) -> {
+            if (level.getEntity(uuid) == null) return;
             NetworkManager.sendToPlayer(player, HatsNetwork.SYNC_ENTITY_HAT,
-                PacketSyncEntityHat.encode(uuid, hat)));
+                PacketSyncEntityHat.encode(uuid, hat));
+        });
     }
 
     public static void sendManifest(ServerPlayer player)

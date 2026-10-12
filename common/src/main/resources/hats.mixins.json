@@ -3,7 +3,9 @@
   "minVersion": "0.8",
   "package": "me.guivnf.mods.hats.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+    "MixinEntity"
+  ],
   "client": [
     "MixinCamera",
     "MixinGameRenderer",
