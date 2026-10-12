@@ -36,6 +36,7 @@ public class ServerEventHandler
         EntityEvent.ADD.register(ServerEventHandler::onEntityAdd);
         PlayerEvent.PLAYER_JOIN.register(ServerEventHandler::onPlayerJoin);
         PlayerEvent.PLAYER_RESPAWN.register((player, conqueredEnd) -> onPlayerRespawn(player));
+        PlayerEvent.CHANGE_DIMENSION.register((player, oldLevel, newLevel) -> onPlayerChangeDimension(player));
 
         TickEvent.SERVER_LEVEL_POST.register(ServerEventHandler::onServerLevelTick);
         TickEvent.SERVER_POST.register(ServerEventHandler::onServerTick);
@@ -155,9 +156,19 @@ public class ServerEventHandler
         return EventResult.pass();
     }
 
+    private static void onPlayerChangeDimension(ServerPlayer player)
+    {
+        HatsSavedData data = HatsSavedData.get(player.serverLevel());
+        NetworkHelper.syncLoadedEntityHats(player, data);
+
+        if (data.getEntityHat(player.getUUID()) != null) NetworkHelper.broadcastEntityHat(player);
+    }
+
     private static void onPlayerRespawn(ServerPlayer player)
     {
         HatsSavedData data = HatsSavedData.get(player.serverLevel());
+        NetworkHelper.syncLoadedEntityHats(player, data);
+
         PlayerHatData playerData = data.getPlayer(player.getUUID());
         if (playerData == null) return;
 
@@ -182,7 +193,7 @@ public class ServerEventHandler
             NetworkHelper.broadcastEntityHat(player);
         }
 
-        NetworkHelper.syncAllEntityHats(player, data);
+        NetworkHelper.syncLoadedEntityHats(player, data);
     }
 
     private static EventResult onEntityAdd(Entity entity, Level level)
