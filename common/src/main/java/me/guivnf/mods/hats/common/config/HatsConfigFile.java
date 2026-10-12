@@ -33,8 +33,19 @@ public final class HatsConfigFile
     private static void parseInto(String text, HatsConfig cfg)
     {
         String section = "";
+        String pendingKey = null;
+        StringBuilder pendingValue = new StringBuilder();
         for (String rawLine : text.split("\\r?\\n")) {
             String line = stripComment(rawLine).trim();
+
+            if (pendingKey != null) {
+                pendingValue.append(' ').append(line);
+                if (!isListClosed(pendingValue)) continue;
+                applyKey(cfg, section, pendingKey, pendingValue.toString());
+                pendingKey = null;
+                continue;
+            }
+
             if (line.isEmpty()) continue;
 
             if (line.startsWith("[") && line.endsWith("]")) {
@@ -46,8 +57,32 @@ public final class HatsConfigFile
             if (eq <= 0) continue;
             String key = line.substring(0, eq).trim();
             String value = line.substring(eq + 1).trim();
+
+            if (value.startsWith("[") && !isListClosed(value)) {
+                pendingKey = key;
+                pendingValue.setLength(0);
+                pendingValue.append(value);
+                continue;
+            }
+
             applyKey(cfg, section, key, value);
         }
+
+        if (pendingKey != null) HatsMod.LOGGER.warn("hats.toml list for key {} is missing its closing ]", pendingKey);
+    }
+
+    private static boolean isListClosed(CharSequence value)
+    {
+        int depth = 0;
+        boolean inString = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '"') inString = !inString;
+            else if (!inString && c == '[') depth++;
+            else if (!inString && c == ']') depth--;
+        }
+
+        return depth <= 0;
     }
 
     private static String stripComment(String line)
