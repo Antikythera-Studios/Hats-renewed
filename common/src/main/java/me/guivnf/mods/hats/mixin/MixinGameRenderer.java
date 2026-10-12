@@ -27,4 +27,14 @@ public abstract class MixinGameRenderer {
     private void hats$resetFrameCounter(float partialTick, long nanoTime, boolean renderLevel, CallbackInfo ci) {
         me.guivnf.mods.hats.client.render.LayerHat.resetFrameCounter();
     }
+
+    @Inject(method = "renderLevel(FJLcom/mojang/blaze3d/vertex/PoseStack;)V", at = @At("HEAD"))
+    private void hats$beginLevel(float partialTick, long finishTimeNano, com.mojang.blaze3d.vertex.PoseStack poseStack, CallbackInfo ci) {
+        me.guivnf.mods.hats.client.render.LayerHat.RENDERING_LEVEL.set(true);
+    }
+
+    @Inject(method = "renderLevel(FJLcom/mojang/blaze3d/vertex/PoseStack;)V", at = @At("RETURN"))
+    private void hats$endLevel(float partialTick, long finishTimeNano, com.mojang.blaze3d.vertex.PoseStack poseStack, CallbackInfo ci) {
+        me.guivnf.mods.hats.client.render.LayerHat.RENDERING_LEVEL.set(false);
+    }
 }
