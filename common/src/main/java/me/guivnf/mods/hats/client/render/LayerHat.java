@@ -30,7 +30,9 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,7 +54,7 @@ public class LayerHat<T extends LivingEntity, M extends EntityModel<T>>
     private static final float Z_FIGHT_INFLATE = 1.005f;
     private static final float HEAD_HALF = 4.0f / 16.0f;
 
-    public static final ThreadLocal<Boolean> HAT_RENDERED_THIS_ENTITY = ThreadLocal.withInitial(() -> false);
+    private static final Set<Entity> LAYER_RENDERED = Collections.newSetFromMap(new IdentityHashMap<>());
 
     public static final ThreadLocal<Boolean> RENDERING_HAT_GUI_PREVIEW = ThreadLocal.withInitial(() -> false);
 
@@ -71,6 +73,12 @@ public class LayerHat<T extends LivingEntity, M extends EntityModel<T>>
     public static void resetFrameCounter()
     {
         rendersThisFrame = 0;
+        LAYER_RENDERED.clear();
+    }
+
+    public static boolean consumeLayerRendered(Entity entity)
+    {
+        return LAYER_RENDERED.remove(entity);
     }
 
     private static final Map<Class<?>, float[]> HEAD_OFFSET_CACHE = new WeakHashMap<>();
@@ -87,7 +95,7 @@ public class LayerHat<T extends LivingEntity, M extends EntityModel<T>>
     {
         if (EpicFightCompat.PRESENT && EpicFightCompat.isEpicFightEntity(entity)) return;
 
-        HAT_RENDERED_THIS_ENTITY.set(true);
+        LAYER_RENDERED.add(entity);
 
         if (isOwnFirstPersonView(entity)) return;
         if (entity.isInvisible() && !HatsMod.getConfig().renderOnInvisible) return;
