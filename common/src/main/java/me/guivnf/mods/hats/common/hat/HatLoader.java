@@ -89,7 +89,10 @@ public class HatLoader
     private static void loadBuiltinPath(String resourcePath, List<HatDefinition> hats, List<HatDefinition> accessories)
     {
         URL url = HatLoader.class.getResource(resourcePath);
-        if (url == null) return;
+        if (url == null) {
+            loadBuiltinPathFromCodeSource(resourcePath, hats, accessories);
+            return;
+        }
 
         try {
             URI uri = url.toURI();

@@ -6,7 +6,8 @@ import me.guivnf.mods.hats.HatsMod;
 import me.guivnf.mods.hats.common.entity.HatEntity;
 import me.guivnf.mods.hats.common.item.HatLauncherItem;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -30,20 +31,21 @@ public class HatsRegistries
                     .sized(0.1f, 0.1f)
                     .clientTrackingRange(64)
                     .updateInterval(20)
-                    .build("hats:hat")
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, "hat")))
             );
 
     public static final RegistrySupplier<HatLauncherItem> HAT_LAUNCHER =
-            ITEMS.register("hat_launcher", () -> new HatLauncherItem(new Item.Properties().stacksTo(1)));
+            ITEMS.register("hat_launcher", () -> new HatLauncherItem(new Item.Properties().stacksTo(1)
+                .setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, "hat_launcher")))));
 
     public static final RegistrySupplier<SoundEvent> POOF =
-            SOUND_EVENTS.register("poof", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(HatsMod.MOD_ID, "poof")));
+            SOUND_EVENTS.register("poof", () -> SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, "poof")));
 
     public static final RegistrySupplier<SoundEvent> TUBE =
-            SOUND_EVENTS.register("tube", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(HatsMod.MOD_ID, "tube")));
+            SOUND_EVENTS.register("tube", () -> SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, "tube")));
 
     public static final RegistrySupplier<SoundEvent> BONK =
-            SOUND_EVENTS.register("bonk", () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(HatsMod.MOD_ID, "bonk")));
+            SOUND_EVENTS.register("bonk", () -> SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, "bonk")));
 
     public static void register()
     {

@@ -5,7 +5,7 @@ import me.guivnf.mods.hats.common.hat.HatDefinition;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import org.jetbrains.annotations.Nullable;
 import java.awt.*;
@@ -15,10 +15,10 @@ import java.util.Map;
 
 public class HatTextureManager
 {
-    private static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
+    private static final Map<String, Identifier> TEXTURE_CACHE = new HashMap<>();
 
     @Nullable
-    public static ResourceLocation getTexture(HatDefinition def, HatPart part)
+    public static Identifier getTexture(HatDefinition def, HatPart part)
     {
         if (def.textureBytes == null || def.textureBytes.length == 0) return null;
 
@@ -33,7 +33,7 @@ public class HatTextureManager
     }
 
     @Nullable
-    private static ResourceLocation uploadTexture(String key, byte[] pngBytes, float hShift, float sShift, float bShift)
+    private static Identifier uploadTexture(String key, byte[] pngBytes, float hShift, float sShift, float bShift)
     {
         try {
             com.mojang.blaze3d.platform.NativeImage image =
@@ -42,13 +42,13 @@ public class HatTextureManager
             if (hShift != 0f || sShift != 0f || bShift != 0f) {
                 for (int x = 0; x < image.getWidth(); x++) {
                     for (int y = 0; y < image.getHeight(); y++) {
-                        int abgr = image.getPixelRGBA(x, y);
-                        int alpha = (abgr >> 24) & 0xff;
+                        int argb = image.getPixel(x, y);
+                        int alpha = (argb >> 24) & 0xff;
                         if (alpha == 0) continue;
 
-                        int blue  = (abgr >> 16) & 0xff;
-                        int green = (abgr >> 8)  & 0xff;
-                        int red   =  abgr         & 0xff;
+                        int red   = (argb >> 16) & 0xff;
+                        int green = (argb >> 8)  & 0xff;
+                        int blue  =  argb         & 0xff;
 
                         float[] hsb = Color.RGBtoHSB(red, green, blue, null);
                         hsb[0] = (hsb[0] + hShift) % 1f;
@@ -60,13 +60,13 @@ public class HatTextureManager
                         int r = (rgb >> 16) & 0xff;
                         int g = (rgb >> 8)  & 0xff;
                         int b =  rgb         & 0xff;
-                        image.setPixelRGBA(x, y, (alpha << 24) | (b << 16) | (g << 8) | r);
+                        image.setPixel(x, y, (alpha << 24) | (r << 16) | (g << 8) | b);
                     }
                 }
             }
 
-            DynamicTexture dynamicTexture = new DynamicTexture(image);
-            ResourceLocation location = ResourceLocation.fromNamespaceAndPath(HatsMod.MOD_ID, "dynamic/" + key.hashCode());
+            DynamicTexture dynamicTexture = new DynamicTexture(() -> "hats:" + key, image);
+            Identifier location = Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, "dynamic/" + key.hashCode());
             Minecraft.getInstance().getTextureManager().register(location, dynamicTexture);
             return location;
         } catch (Exception e) {
@@ -88,7 +88,7 @@ public class HatTextureManager
 
     public static void clearAll()
     {
-        for (ResourceLocation loc : TEXTURE_CACHE.values()) {
+        for (Identifier loc : TEXTURE_CACHE.values()) {
             Minecraft.getInstance().getTextureManager().release(loc);
         }
         TEXTURE_CACHE.clear();

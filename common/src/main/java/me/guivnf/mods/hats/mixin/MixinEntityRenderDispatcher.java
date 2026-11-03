@@ -2,74 +2,63 @@ package me.guivnf.mods.hats.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import me.guivnf.mods.hats.HatsMod;
-import me.guivnf.mods.hats.client.cache.ClientHatCache;
 import me.guivnf.mods.hats.client.compat.EpicFightCompat;
 import me.guivnf.mods.hats.client.compat.GeckoLibCompat;
+import me.guivnf.mods.hats.client.render.HatRenderStateAccess;
 import me.guivnf.mods.hats.client.render.HatRenderer;
-import me.guivnf.mods.hats.client.render.LayerHat;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.common.hat.placement.HatPlacementInfo;
-import me.guivnf.mods.hats.common.hat.placement.HatPlacementRegistry;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import java.util.HashSet;
-import java.util.Set;
 
 @Mixin(EntityRenderDispatcher.class)
 public class MixinEntityRenderDispatcher
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger("HatsDebug");
-    private static final Set<String> LOGGED_TYPES = new HashSet<>();
-    private static long lastEfLogMs = 0L;
-
     private static final float EF_HEAD_CROWN_OFFSET = 7.75f / 16.0f;
 
     private static final float Z_FIGHT_INFLATE  = 1.012f;
     private static final float HEAD_HALF_OFFSET = 4.0f / 16.0f;
 
-    @Inject(method = "render",
+    @Inject(method = "submit",
             at = @At(value = "INVOKE",
-                     target = "Lnet/minecraft/client/renderer/entity/EntityRenderer;render(Lnet/minecraft/world/entity/Entity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+                     target = "Lnet/minecraft/client/renderer/entity/EntityRenderer;submit(Lnet/minecraft/client/renderer/entity/state/EntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
                      shift = At.Shift.AFTER))
-    private void hats$fallbackRender(Entity entity, double camX, double camY, double camZ,
-            float yRot, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
-            int packedLight, CallbackInfo ci)
+    private void hats$fallbackRender(EntityRenderState state, CameraRenderState camera, double camX, double camY, double camZ,
+            PoseStack poseStack, SubmitNodeCollector collector, CallbackInfo ci)
     {
-        if (LayerHat.consumeLayerRendered(entity)) return;
-        if (!(entity instanceof LivingEntity living)) return;
-        if (LayerHat.isOwnFirstPersonView(entity)) return;
+        HatRenderStateAccess access = (HatRenderStateAccess) state;
+        if (access.hats$isLayerRendered() || access.hats$isHatHidden()) return;
+        if (!(state instanceof LivingEntityRenderState livingState)) return;
 
-        HatPart hat = ClientHatCache.getEntityHat(entity.getUUID());
-        if (hat == null || !hat.isShowing) return;
+        HatPart hat = access.hats$getHat();
+        LivingEntity living = access.hats$getEntity();
+        if (hat == null || living == null) return;
 
-        if (living.isInvisible() && !HatsMod.getConfig().renderOnInvisible) return;
+        float partialTick = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
+        HatPlacementInfo placement = access.hats$getPlacement();
+        if (placement == null) return;
 
-        HatPlacementInfo placement = HatPlacementRegistry.get(living);
-
-        boolean firstLog = LOGGED_TYPES.add(entity.getClass().getName());
-
-        float bodyYaw   = Mth.rotLerp(partialTick, living.yBodyRotO, living.yBodyRot);
-        float headYaw   = Mth.rotLerp(partialTick, living.yHeadRotO, living.yHeadRot);
-        float headPitch = Mth.lerp(partialTick, living.xRotO, living.getXRot());
+        float bodyYaw   = livingState.bodyRot;
+        float headYaw   = livingState.bodyRot + livingState.yRot;
+        float headPitch = livingState.xRot;
 
         poseStack.pushPose();
 
         boolean isGecko      = GeckoLibCompat.PRESENT  && GeckoLibCompat.isGeckoLibEntity(living);
-        boolean inGuiPreview = LayerHat.RENDERING_HAT_GUI_PREVIEW.get();
+        boolean inGuiPreview = access.hats$isGuiPreview();
         boolean isEpicFight  = !inGuiPreview && EpicFightCompat.PRESENT && EpicFightCompat.isEpicFightEntity(living);
 
-        float bbScale    = Mth.clamp(entity.getBbWidth() / 0.6f, 0.2f, 3.0f);
+        float bbScale    = Mth.clamp(state.boundingBoxWidth / 0.6f, 0.2f, 3.0f);
         float finalScale = isEpicFight ? placement.scale : placement.scale * bbScale;
 
         // if (firstLog) {
@@ -83,7 +72,7 @@ public class MixinEntityRenderDispatcher
             // if (now - lastEfLogMs > 2000L) {
             //     lastEfLogMs = now;
             //     LOGGER.info("[Hats-EF] headMatNull={} bodyYaw={} headYaw={} headPitch={} bbHeight={}",
-            //         headMat == null, bodyYaw, headYaw, headPitch, entity.getBbHeight());
+            //         headMat == null, bodyYaw, headYaw, headPitch, state.boundingBoxHeight);
             //     if (headMat != null) {
             //         LOGGER.info("[Hats-EF] headMat tx={} ty={} tz={}",
             //             headMat.m30(), headMat.m31(), headMat.m32());
@@ -107,7 +96,7 @@ public class MixinEntityRenderDispatcher
                 poseStack.scale(Z_FIGHT_INFLATE, Z_FIGHT_INFLATE, Z_FIGHT_INFLATE);
                 poseStack.translate(0.0, -HEAD_HALF_OFFSET, 0.0);
             } else {
-                poseStack.translate(0.0, entity.getBbHeight(), 0.0);
+                poseStack.translate(0.0, state.boundingBoxHeight, 0.0);
                 poseStack.scale(-1f, -1f, 1f);
                 poseStack.mulPose(Axis.YP.rotationDegrees(180f - bodyYaw));
                 poseStack.mulPose(Axis.XP.rotationDegrees(headPitch));
@@ -124,13 +113,13 @@ public class MixinEntityRenderDispatcher
             }
             poseStack.scale(-1f, -1f, 1f);
         } else {
-            poseStack.translate(0.0, entity.getBbHeight(), 0.0);
+            poseStack.translate(0.0, state.boundingBoxHeight, 0.0);
             poseStack.scale(-1f, -1f, 1f);
             poseStack.mulPose(Axis.YP.rotationDegrees(180f - 2f * bodyYaw + headYaw));
             poseStack.mulPose(Axis.XP.rotationDegrees(headPitch));
         }
 
-        HatRenderer.render(poseStack, bufferSource, packedLight,
+        HatRenderer.render(poseStack, collector, state.lightCoords,
             OverlayTexture.pack(0, 10),
             hat, placement.offsetX, placement.offsetY, placement.offsetZ,
             placement.rotX, placement.rotY, placement.rotZ, finalScale);

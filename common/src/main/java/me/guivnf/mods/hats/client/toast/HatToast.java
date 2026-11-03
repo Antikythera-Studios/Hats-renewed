@@ -1,15 +1,12 @@
 package me.guivnf.mods.hats.client.toast;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
-import me.guivnf.mods.hats.client.render.HatRenderer;
+import me.guivnf.mods.hats.client.gui.HatModelRenderState;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
-import net.minecraft.client.gui.components.toasts.ToastComponent;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.minecraft.network.chat.Component;
 
 public class HatToast
@@ -21,7 +18,7 @@ public class HatToast
 
     private final HatPart hat;
     private final boolean isAccessory;
-    private long startTime = -1;
+    private Visibility wantedVisibility = Visibility.SHOW;
 
     public HatToast(HatPart hat, boolean isAccessory)
     {
@@ -36,11 +33,20 @@ public class HatToast
     public int height() { return H; }
 
     @Override
-    public Visibility render(GuiGraphics graphics, ToastComponent toastComponent, long timeSinceLastVisible)
+    public Visibility getWantedVisibility()
     {
-        if (startTime < 0) startTime = timeSinceLastVisible;
-        long elapsed = timeSinceLastVisible - startTime;
+        return wantedVisibility;
+    }
 
+    @Override
+    public void update(ToastManager manager, long fullyVisibleForMs)
+    {
+        wantedVisibility = fullyVisibleForMs >= DISPLAY_TIME_MS ? Visibility.HIDE : Visibility.SHOW;
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long fullyVisibleForMs)
+    {
         graphics.fill(0, 0, W, H, 0xFFFFFFFF);
         graphics.fill(0, 0, W, 1,     0xFFCCCCCC);
         graphics.fill(0, H - 1, W, H, 0xFFAAAAAA);
@@ -48,48 +54,18 @@ public class HatToast
         graphics.fill(W - 1, 0, W, H, 0xFFAAAAAA);
 
         String titleKey = isAccessory ? "hats.toast.new_accessory" : "hats.toast.new_hat";
-        graphics.drawString(toastComponent.getMinecraft().font,
-            Component.translatable(titleKey), H + 4, 7, 0x333333, false);
-        graphics.drawString(toastComponent.getMinecraft().font,
-            Component.literal(hat.name), H + 4, 18, 0x555555, false);
+        graphics.text(font, Component.translatable(titleKey), H + 4, 7, 0xFF333333, false);
+        graphics.text(font, Component.literal(hat.name), H + 4, 18, 0xFF555555, false);
 
-        renderHatPreview(graphics, toastComponent.getMinecraft(), elapsed);
-
-        return elapsed >= DISPLAY_TIME_MS ? Visibility.HIDE : Visibility.SHOW;
-    }
-
-    private void renderHatPreview(GuiGraphics graphics, Minecraft mc, long elapsedMs)
-    {
         HatPart renderPart = new HatPart(hat.name);
         renderPart.isShowing = true;
 
-        PoseStack pose = graphics.pose();
-        pose.pushPose();
-
-        pose.translate(H / 2f, H / 2f, 100f);
-
-        float yaw = (elapsedMs / 3000f) * 360f;
-        pose.mulPose(Axis.YP.rotationDegrees(yaw));
-
-        float scale = 14f;
-        pose.scale(scale, scale, scale);
-
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-
-        RenderSystem.enableDepthTest();
-        HatRenderer.setForceNoCull(true);
-        HatRenderer.render(pose, buffers, 0xF000F0,
-                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
-                renderPart, 0, 0, 0, 0, 0, 0, 1f);
-        HatRenderer.setForceNoCull(false);
-        buffers.endBatch();
-        RenderSystem.disableDepthTest();
-
-        pose.popPose();
+        float yaw = (fullyVisibleForMs / 3000f) * 360f;
+        HatModelRenderState.submit(graphics, renderPart, yaw, 0, 0, H, H, 14f);
     }
 
     public static void show(HatPart hat, boolean isAccessory)
     {
-        Minecraft.getInstance().getToasts().addToast(new HatToast(hat, isAccessory));
+        Minecraft.getInstance().getToastManager().addToast(new HatToast(hat, isAccessory));
     }
 }

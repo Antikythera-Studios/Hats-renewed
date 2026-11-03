@@ -93,7 +93,7 @@ public class ServerEventHandler
         java.util.UUID uuid = player.getUUID();
         TradeOfferStore.get().closeSession(uuid);
         for (TradeOffer offer : TradeOfferStore.get().removeAllInvolving(uuid)) {
-            ServerPlayer other = player.getServer().getPlayerList().getPlayer(
+            ServerPlayer other = player.level().getServer().getPlayerList().getPlayer(
                 offer.senderUuid.equals(uuid) ? offer.receiverUuid : offer.senderUuid);
             if (other != null) {
                 NetworkManager.sendToPlayer(other, HatsNetwork.TRADE_OFFER_REVOKED,
@@ -105,15 +105,15 @@ public class ServerEventHandler
     private static void onServerLevelTick(ServerLevel level)
     {
         if (!HatsMod.getConfig().preventUndeadFire) return;
-        if (!level.isDay()) return;
+        if (!level.isBrightOutside()) return;
 
         HatsSavedData data = HatsSavedData.get(level);
         for (UUID uuid : data.getAllEntityHats().keySet()) {
             Entity ent = level.getEntity(uuid);
             if (!(ent instanceof LivingEntity living)) continue;
-            if (!living.getType().is(EntityTypeTags.UNDEAD)) continue;
+            if (!living.is(EntityTypeTags.UNDEAD)) continue;
             if (!living.isOnFire()) continue;
-            if (living.isInWaterRainOrBubble() || living.isInPowderSnow) continue;
+            if (living.isInWaterOrRain() || living.isInPowderSnow) continue;
             net.minecraft.core.BlockPos eyePos = net.minecraft.core.BlockPos.containing(
                 living.getX(), living.getEyeY(), living.getZ());
             if (!level.canSeeSky(eyePos)) continue;
@@ -127,7 +127,7 @@ public class ServerEventHandler
 
     private static EventResult onEntityDeath(LivingEntity entity, DamageSource source)
     {
-        if (entity.level().isClientSide) return EventResult.pass();
+        if (entity.level().isClientSide()) return EventResult.pass();
         if (!(entity.level() instanceof ServerLevel serverLevel)) return EventResult.pass();
 
         if (entity instanceof ServerPlayer) return EventResult.pass();
@@ -158,7 +158,7 @@ public class ServerEventHandler
 
     private static void onPlayerChangeDimension(ServerPlayer player)
     {
-        HatsSavedData data = HatsSavedData.get(player.serverLevel());
+        HatsSavedData data = HatsSavedData.get(player.level());
         NetworkHelper.syncLoadedEntityHats(player, data);
 
         if (data.getEntityHat(player.getUUID()) != null) NetworkHelper.broadcastEntityHat(player);
@@ -166,7 +166,7 @@ public class ServerEventHandler
 
     private static void onPlayerRespawn(ServerPlayer player)
     {
-        HatsSavedData data = HatsSavedData.get(player.serverLevel());
+        HatsSavedData data = HatsSavedData.get(player.level());
         NetworkHelper.syncLoadedEntityHats(player, data);
 
         PlayerHatData playerData = data.getPlayer(player.getUUID());
@@ -181,7 +181,7 @@ public class ServerEventHandler
 
     private static void onPlayerJoin(ServerPlayer player)
     {
-        HatsSavedData data = HatsSavedData.get(player.serverLevel());
+        HatsSavedData data = HatsSavedData.get(player.level());
         PlayerHatData playerData = data.getOrCreatePlayer(player.getUUID());
 
         NetworkHelper.sendManifest(player);
@@ -225,7 +225,7 @@ public class ServerEventHandler
 
     public static void onPlayerPickupHat(ServerPlayer player, HatPart hat)
     {
-        HatsSavedData data = HatsSavedData.get(player.serverLevel());
+        HatsSavedData data = HatsSavedData.get(player.level());
 
         boolean isNewHat = !data.hasHat(player.getUUID(), hat.name);
 
@@ -288,8 +288,7 @@ public class ServerEventHandler
         net.minecraft.network.chat.MutableComponent hatName =
             net.minecraft.network.chat.Component.literal(hat.name)
                 .withStyle(s -> s.withColor(rarity.colour)
-                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
-                        net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, tooltip))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(tooltip))
                     .withInsertion(insertionStr));
 
         net.minecraft.network.chat.MutableComponent msg =
@@ -299,6 +298,6 @@ public class ServerEventHandler
                 .append(hatName)
                 .append(net.minecraft.network.chat.Component.literal("!"));
 
-        player.server.getPlayerList().broadcastSystemMessage(msg, false);
+        player.level().getServer().getPlayerList().broadcastSystemMessage(msg, false);
     }
 }

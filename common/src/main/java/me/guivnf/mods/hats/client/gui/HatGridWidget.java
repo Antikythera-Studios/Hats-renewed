@@ -1,23 +1,20 @@
 package me.guivnf.mods.hats.client.gui;
 
-import com.mojang.math.Axis;
-import me.guivnf.mods.hats.client.cache.ClientHatCache;
 import me.guivnf.mods.hats.client.compat.EpicFightCompat;
-import me.guivnf.mods.hats.client.render.LayerHat;
 import me.guivnf.mods.hats.common.hat.HatDefinition;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.common.hat.HatRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.player.Player;
-import org.joml.Quaternionf;
 
 import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
@@ -123,7 +120,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         return selected;
     }
 
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         if (!visible)
             return;
 
@@ -150,7 +147,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         }
 
         if (filtered.isEmpty()) {
-            g.drawString(font, Component.translatable("hats.gui.no_hats").getString(), x + 4, y + 4, 0x888888);
+            g.text(font, Component.translatable("hats.gui.no_hats").getString(), x + 4, y + 4, 0xFF888888);
         } else {
             g.enableScissor(x + 1, y + 1, x + gridW() - 1, y + height - 1);
 
@@ -194,13 +191,13 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
             } else {
                 lines.add(Component.literal(hat.name));
             }
-            g.renderTooltip(font,
+            g.setTooltipForNextFrame(font,
                     lines.stream().map(Component::getVisualOrderText).toList(),
                     mouseX, mouseY);
         }
     }
 
-    private void renderCell(GuiGraphics g, HatPart hat, int idx, int cx, int cy,
+    private void renderCell(GuiGraphicsExtractor g, HatPart hat, int idx, int cx, int cy,
             int mouseX, int mouseY, @Nullable Player player) {
         boolean sel = selected != null && selected.name.equals(hat.name);
         boolean hovered = !scrollDragging && hoveredIdx == idx;
@@ -233,7 +230,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         }
     }
 
-    private void renderHamburger(GuiGraphics g, int cx, int cy, boolean active,
+    private void renderHamburger(GuiGraphicsExtractor g, int cx, int cy, boolean active,
             int mouseX, int mouseY) {
         int bx = cx + 1;
         int by = cy + 1;
@@ -245,7 +242,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         }
     }
 
-    private void renderMenuOptions(GuiGraphics g, HatPart hat, int cx, int cy,
+    private void renderMenuOptions(GuiGraphicsExtractor g, HatPart hat, int cx, int cy,
             int mouseX, int mouseY) {
         HatDefinition def = HatRegistry.get(hat.getRegistryKey());
         boolean isCreative = mc.player != null && mc.player.getAbilities().instabuild;
@@ -268,7 +265,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
                 isFav ? 0xFF885500 : 0xFF555555, mouseX, mouseY);
     }
 
-    private void renderOptionBtn(GuiGraphics g, int bx, int by, String unicodeLabel, String fallback,
+    private void renderOptionBtn(GuiGraphicsExtractor g, int bx, int by, String unicodeLabel, String fallback,
             int iconColor, int mouseX, int mouseY) {
         boolean hov = mouseX >= bx && mouseX < bx + BTN_SZ && mouseY >= by && mouseY < by + BTN_SZ;
         int bg = hov ? 0xCCBBBBDD : 0xCC222244;
@@ -277,67 +274,24 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
 
         String label = fallback;
         float sc = 0.7f;
-        g.pose().pushPose();
-        g.pose().translate(bx + BTN_SZ / 2f, by + BTN_SZ / 2f, 300);
-        g.pose().scale(sc, sc, 1);
+        g.pose().pushMatrix();
+        g.pose().translate(bx + BTN_SZ / 2f, by + BTN_SZ / 2f);
+        g.pose().scale(sc, sc);
         int tw = font.width(label);
-        g.drawString(font, label, -tw / 2, -font.lineHeight / 2, 0xFFFFFF, true);
-        g.pose().popPose();
+        g.text(font, label, -tw / 2, -font.lineHeight / 2, 0xFFFFFFFF, true);
+        g.pose().popMatrix();
     }
 
-    private void renderPlayerInCell(GuiGraphics g, HatPart hat, int cx, int cy, Player player) {
-        HatPart prev = ClientHatCache.getEntityHat(player.getUUID());
-
-        HatPart show = hat.copy();
-        show.isShowing = true;
-        ClientHatCache.setEntityHat(player.getUUID(), show);
-
+    private void renderPlayerInCell(GuiGraphicsExtractor g, HatPart hat, int cx, int cy, Player player) {
         int contentW = CELL_W - STRIP_W;
         int centerX = cx + contentW / 2 + 1;
         int footY = cy + CELL_H + 54;
 
-        Quaternionf cam = new Quaternionf().rotateZ((float) Math.PI);
-        Quaternionf entity = new Quaternionf().rotateY((float) Math.toRadians(-25.0));
-
-        float prevBodyYaw = player.yBodyRot;
-        float prevYRot = player.getYRot();
-        float prevXRot = player.getXRot();
-        float prevYHeadO = player.yHeadRotO;
-        float prevYHead = player.yHeadRot;
-        float prevWalkDist   = player.walkDist;
-        float prevWalkDistO  = player.walkDistO;
-        boolean prevOnGround = player.onGround();
-
-        player.yBodyRot = 180f;
-        player.setYRot(180f);
-        player.setXRot(-8f);
-        player.yHeadRot = 180f;
-        player.yHeadRotO = 180f;
-        player.walkDist  = 0f;
-        player.walkDistO = 0f;
-        player.setOnGround(true);
-
-        g.enableScissor(cx + 1, cy + 1, cx + contentW - 1, cy + CELL_H - 1);
-        LayerHat.RENDERING_HAT_GUI_PREVIEW.set(true);
-        EpicFightCompat.GUI_PREVIEW_ACTIVE = true;
-        InventoryScreen.renderEntityInInventory(g, centerX, footY, 42, new org.joml.Vector3f(), cam, entity, player);
-        EpicFightCompat.GUI_PREVIEW_ACTIVE = false;
-        LayerHat.RENDERING_HAT_GUI_PREVIEW.set(false);
-        g.disableScissor();
-
-        player.yBodyRot = prevBodyYaw;
-        player.setYRot(prevYRot);
-        player.setXRot(prevXRot);
-        player.yHeadRotO = prevYHeadO;
-        player.yHeadRot = prevYHead;
-        player.walkDist  = prevWalkDist;
-        player.walkDistO = prevWalkDistO;
-        player.setOnGround(prevOnGround);
-
-        ClientHatCache.setEntityHat(player.getUUID(), prev);
+        HatPreviewRenderer.render(g, player, hat, centerX, footY, 42,
+            cx + 1, cy + 1, cx + contentW - 1, cy + CELL_H - 1);
     }
 
-    private void renderVerticalName(GuiGraphics g, HatPart hat, int cx, int cy) {
+    private void renderVerticalName(GuiGraphicsExtractor g, HatPart hat, int cx, int cy) {
         HatDefinition def = HatRegistry.get(hat.getRegistryKey());
         int stripX = cx + CELL_W - STRIP_W;
         g.fill(stripX, cy + 1, cx + CELL_W - 1, cy + CELL_H - 1, 0x99000000);
@@ -349,16 +303,16 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         int col = nameColorFor(def);
 
         g.enableScissor(stripX + 1, cy + 2, cx + CELL_W - 1, cy + CELL_H - 2);
-        g.pose().pushPose();
-        g.pose().translate(cx + CELL_W - 2, cy + CELL_H - 3, 200);
-        g.pose().mulPose(Axis.ZP.rotationDegrees(-90f));
-        g.pose().scale(sc, sc, 1f);
-        g.drawString(font, hat.name, (int)(2 - scrollOffset(textW, availW)), yOff, col, true);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(cx + CELL_W - 2, cy + CELL_H - 3);
+        g.pose().rotate((float) Math.toRadians(-90f));
+        g.pose().scale(sc, sc);
+        g.text(font, hat.name, (int)(2 - scrollOffset(textW, availW)), yOff, ARGB.opaque(col), true);
+        g.pose().popMatrix();
         g.disableScissor();
     }
 
-    private void renderAccessoryView(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderAccessoryView(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (accessoryViewHat == null)
             return;
 
@@ -367,7 +321,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         EpicFightCompat.restoreClothState(mc.player, savedCloth);
     }
 
-    private void renderAccessoryViewInner(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderAccessoryViewInner(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         boolean isCreative = mc.player != null && mc.player.getAbilities().instabuild;
         HatDefinition def = HatRegistry.get(accessoryViewHat.getRegistryKey());
         List<HatDefinition> accDefs;
@@ -406,13 +360,13 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
                 && mouseY >= backY + 1 && mouseY < backY + backBtnH - 1;
         g.fill(x + 1, backY + 1, x + mainW - 1, backY + backBtnH - 1, backHov ? 0xFFAAAAAA : 0xFF777777);
         g.fill(x + 1, backY, x + mainW - 1, backY + 1, 0xFF555555);
-        g.drawString(font, "\u2190 Back", x + 4, backY + 4, 0xFFFFFF, false);
+        g.text(font, "\u2190 Back", x + 4, backY + 4, 0xFFFFFFFF, false);
 
         int accX = x + mainW + 1;
         int accW = totalW - mainW - 1 - SCROLL_W;
 
         if (accDefs.isEmpty()) {
-            g.drawString(font, "No accessories", accX + 4, y + 4, 0x888888, false);
+            g.text(font, "No accessories", accX + 4, y + 4, 0xFF888888, false);
             return;
         }
 
@@ -488,7 +442,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         }
     }
 
-    private void renderBigCard(GuiGraphics g, @Nullable HatPart hat, int cx, int cy,
+    private void renderBigCard(GuiGraphicsExtractor g, @Nullable HatPart hat, int cx, int cy,
             int cw, int ch, boolean sel, boolean hov,
             int mouseX, int mouseY) {
         int bg = sel ? 0xFF1A3A6A : (hov ? 0xFF505060 : 0xFF404040);
@@ -499,58 +453,15 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         g.fill(cx + cw - 1, cy, cx + cw, cy + ch, 0xFF222222);
     }
 
-    private void renderPlayerInCard(GuiGraphics g, HatPart hat, int cx, int cy,
+    private void renderPlayerInCard(GuiGraphicsExtractor g, HatPart hat, int cx, int cy,
             int cw, int ch, Player player) {
-        HatPart prev = ClientHatCache.getEntityHat(player.getUUID());
-
-        HatPart show = hat.copy();
-        show.isShowing = true;
-        ClientHatCache.setEntityHat(player.getUUID(), show);
-
         int scale = Math.max(20, Math.min(cw / 2, ch / 3));
 
-        Quaternionf cam = new Quaternionf().rotateZ((float) Math.PI);
-        Quaternionf entity = new Quaternionf().rotateY((float) Math.toRadians(-25.0));
-
-        float prevBodyYaw = player.yBodyRot;
-        float prevYRot = player.getYRot();
-        float prevXRot = player.getXRot();
-        float prevYHeadO = player.yHeadRotO;
-        float prevYHead = player.yHeadRot;
-        float prevWalkDist   = player.walkDist;
-        float prevWalkDistO  = player.walkDistO;
-        boolean prevOnGround = player.onGround();
-
-        player.yBodyRot = 180f;
-        player.setYRot(180f);
-        player.setXRot(-8f);
-        player.yHeadRot = 180f;
-        player.yHeadRotO = 180f;
-        player.walkDist  = 0f;
-        player.walkDistO = 0f;
-        player.setOnGround(true);
-
-        g.enableScissor(cx + 1, cy + 1, cx + cw - STRIP_W - 1, cy + ch - 1);
-        LayerHat.RENDERING_HAT_GUI_PREVIEW.set(true);
-        EpicFightCompat.GUI_PREVIEW_ACTIVE = true;
-        InventoryScreen.renderEntityInInventory(g, cx + (cw - STRIP_W) / 2, cy + ch - 4, scale, new org.joml.Vector3f(), cam, entity, player);
-        EpicFightCompat.GUI_PREVIEW_ACTIVE = false;
-        LayerHat.RENDERING_HAT_GUI_PREVIEW.set(false);
-        g.disableScissor();
-
-        player.yBodyRot = prevBodyYaw;
-        player.setYRot(prevYRot);
-        player.setXRot(prevXRot);
-        player.yHeadRotO = prevYHeadO;
-        player.yHeadRot = prevYHead;
-        player.walkDist  = prevWalkDist;
-        player.walkDistO = prevWalkDistO;
-        player.setOnGround(prevOnGround);
-
-        ClientHatCache.setEntityHat(player.getUUID(), prev);
+        HatPreviewRenderer.render(g, player, hat, cx + (cw - STRIP_W) / 2, cy + ch - 4, scale,
+            cx + 1, cy + 1, cx + cw - STRIP_W - 1, cy + ch - 1);
     }
 
-    private void renderVerticalNameInArea(GuiGraphics g, String name, int col,
+    private void renderVerticalNameInArea(GuiGraphicsExtractor g, String name, int col,
             int cx, int cy, int cw, int ch) {
         int stripX = cx + cw - STRIP_W;
         g.fill(stripX, cy + 1, cx + cw - 1, cy + ch - 1, 0x99000000);
@@ -561,12 +472,12 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         int yOff = -(int) (STRIP_W / sc / 2f + font.lineHeight / 2f - 1);
 
         g.enableScissor(stripX + 1, cy + 2, cx + cw - 1, cy + ch - 2);
-        g.pose().pushPose();
-        g.pose().translate(cx + cw - 2, cy + ch - 3, 200);
-        g.pose().mulPose(Axis.ZP.rotationDegrees(-90f));
-        g.pose().scale(sc, sc, 1f);
-        g.drawString(font, name, (int)(2 - scrollOffset(textW, availW)), yOff, col, true);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(cx + cw - 2, cy + ch - 3);
+        g.pose().rotate((float) Math.toRadians(-90f));
+        g.pose().scale(sc, sc);
+        g.text(font, name, (int)(2 - scrollOffset(textW, availW)), yOff, ARGB.opaque(col), true);
+        g.pose().popMatrix();
         g.disableScissor();
     }
 
@@ -609,7 +520,7 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
         return false;
     }
 
-    private void renderScrollbar(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderScrollbar(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int sbX = x + gridW();
         g.fill(sbX, y, sbX + SCROLL_W, y + height, 0xFF2A2A2A);
         g.fill(sbX + 1, y + 1, sbX + SCROLL_W - 1, y + height - 1, 0xFF333333);
@@ -647,7 +558,11 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (!visible || !isMouseOver(mouseX, mouseY))
             return false;
 
@@ -863,14 +778,22 @@ public class HatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0)
             scrollDragging = false;
         return false;
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (!visible || button != 0 || !scrollDragging)
             return false;
 

@@ -2,7 +2,6 @@ architectury {
     common(project.enabled_platforms.split(","))
 }
 
-
 dependencies {
-    modImplementation "dev.architectury:architectury:${project.architectury_version}"
+    implementation "dev.architectury:architectury:${project.architectury_version}"
 }

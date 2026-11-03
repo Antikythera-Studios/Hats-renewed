@@ -28,7 +28,7 @@ public class PacketRequestPeerInventory
 
         context.queue(() -> {
             ServerPlayer sender = (ServerPlayer) context.getPlayer();
-            ServerPlayer target = sender.getServer().getPlayerList().getPlayer(targetUuid);
+            ServerPlayer target = sender.level().getServer().getPlayerList().getPlayer(targetUuid);
 
             if (target == null || target.level() != sender.level()) {
                 NetworkManager.sendToPlayer(sender, HatsNetwork.TRADE_ERROR,
@@ -46,7 +46,7 @@ public class PacketRequestPeerInventory
             TradeOfferStore.get().openSession(new TradeBuilderSession(
                 sender.getUUID(), targetUuid, System.currentTimeMillis()));
 
-            HatsSavedData data = HatsSavedData.get(target.serverLevel());
+            HatsSavedData data = HatsSavedData.get(target.level());
             PlayerHatData targetData = data.getPlayer(targetUuid);
 
             NetworkManager.sendToPlayer(sender, HatsNetwork.PEER_INVENTORY,

@@ -25,7 +25,7 @@ public class PacketRequestNearbyPlayers
 
             double range = TradeOfferStore.TRADE_RANGE_BLOCKS;
             double rSq = range * range;
-            for (ServerPlayer other : sender.getServer().getPlayerList().getPlayers()) {
+            for (ServerPlayer other : sender.level().getServer().getPlayerList().getPlayers()) {
                 if (other == sender) continue;
                 if (other.level() != sender.level()) continue;
                 if (other.distanceToSqr(sender) > rSq) continue;

@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "me.guivnf.mods.hats.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "MixinEntity"
   ],
@@ -10,11 +10,14 @@
     "MixinCamera",
     "MixinGameRenderer",
     "MixinEntityRenderDispatcher",
+    "MixinLevelRenderer",
+    "MixinEntityRenderState",
+    "MixinEntityRenderer",
     "MixinOptionsScreen",
     "MixinGuiGraphics",
     "accessor.ModelPartAccessor",
-    "accessor.AgeableListModelAccessor",
-    "accessor.AgeableHierarchicalModelAccessor"
+    "accessor.GuiGraphicsExtractorAccessor",
+    "accessor.ConditionalItemModelPropertiesAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

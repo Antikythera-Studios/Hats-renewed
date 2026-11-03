@@ -1,6 +1,5 @@
 package me.guivnf.mods.hats.client.gui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import dev.architectury.networking.NetworkManager;
 import me.guivnf.mods.hats.client.cache.ClientHatCache;
 import me.guivnf.mods.hats.client.event.ClientEventHandler;
@@ -10,14 +9,16 @@ import me.guivnf.mods.hats.common.hat.HatRegistry;
 import me.guivnf.mods.hats.common.network.HatsNetwork;
 import me.guivnf.mods.hats.common.network.packet.PacketHatCustomisation;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 import org.jetbrains.annotations.Nullable;
@@ -42,12 +43,12 @@ public class HatsScreen extends Screen
     @Nullable private HatPart prevHatInCache;
     @Nullable private UUID playerUuid;
 
-    private static final ResourceLocation ICON_CANCEL =
-            ResourceLocation.fromNamespaceAndPath("hats", "textures/icon/cancel.png");
-    private static final ResourceLocation ICON_SORT =
-            ResourceLocation.fromNamespaceAndPath("hats", "textures/icon/categories.png");
-    private static final ResourceLocation ICON_TRADE =
-            ResourceLocation.fromNamespaceAndPath("hats", "textures/icon/trade.png");
+    private static final Identifier ICON_CANCEL =
+            Identifier.fromNamespaceAndPath("hats", "textures/icon/cancel.png");
+    private static final Identifier ICON_SORT =
+            Identifier.fromNamespaceAndPath("hats", "textures/icon/categories.png");
+    private static final Identifier ICON_TRADE =
+            Identifier.fromNamespaceAndPath("hats", "textures/icon/trade.png");
 
     private static final int SORT_ALPHA       = 0;
     private static final int SORT_RARITY      = 1;
@@ -357,29 +358,29 @@ public class HatsScreen extends Screen
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick)
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick)
     {
         drawPanel(g, panelX(), panelY(), panelW(), panelH());
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         if (hatGrid != null) {
-            hatGrid.render(g, mouseX, mouseY, partialTick);
+            hatGrid.extractRenderState(g, mouseX, mouseY, partialTick);
         }
 
         if (removeButton != null && removeButton.visible) {
             int pad = 2;
-            g.blit(ICON_CANCEL,
+            g.blit(RenderPipelines.GUI_TEXTURED, ICON_CANCEL,
                 removeButton.getX() + pad, removeButton.getY() + pad,
-                0, 0,
+                0f, 0f,
                 SIDE_BTN_SIZE - pad * 2, SIDE_BTN_SIZE - pad * 2,
                 SIDE_BTN_SIZE - pad * 2, SIDE_BTN_SIZE - pad * 2);
         }
         if (tradeButton != null && tradeButton.visible) {
             int pad = 2;
-            g.blit(ICON_TRADE,
+            g.blit(RenderPipelines.GUI_TEXTURED, ICON_TRADE,
                 tradeButton.getX() + pad, tradeButton.getY() + pad,
-                0, 0,
+                0f, 0f,
                 SIDE_BTN_SIZE - pad * 2, SIDE_BTN_SIZE - pad * 2,
                 SIDE_BTN_SIZE - pad * 2, SIDE_BTN_SIZE - pad * 2);
 
@@ -394,31 +395,29 @@ public class HatsScreen extends Screen
         }
         if (sortButton != null && sortButton.visible) {
             int pad = 2;
-            g.blit(ICON_SORT,
+            g.blit(RenderPipelines.GUI_TEXTURED, ICON_SORT,
                 sortButton.getX() + pad, sortButton.getY() + pad,
-                0, 0,
+                0f, 0f,
                 SIDE_BTN_SIZE - pad * 2, SIDE_BTN_SIZE - pad * 2,
                 SIDE_BTN_SIZE - pad * 2, SIDE_BTN_SIZE - pad * 2);
         }
 
         if (sortMenuOpen) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             renderSortMenu(g, mouseX, mouseY);
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
 
         if (colorPanelOpen) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 400);
-            RenderSystem.disableDepthTest();
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             renderColorPanel(g, mouseX, mouseY);
-            RenderSystem.enableDepthTest();
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
     }
 
-    private void renderSortMenu(GuiGraphics g, int mouseX, int mouseY)
+    private void renderSortMenu(GuiGraphicsExtractor g, int mouseX, int mouseY)
     {
         if (sortButton == null) return;
 
@@ -440,11 +439,11 @@ public class HatsScreen extends Screen
                     hovered ? 0xFF4A7AB5 : 0xFF2D4A6A);
 
             int textCol = selected ? 0xFFFFD700 : (hovered ? 0xFFFFFFFF : 0xFFCCCCCC);
-            g.drawString(font, SORT_LABELS[i], mx + SORT_MENU_PAD, iy + 2, textCol, false);
+            g.text(font, SORT_LABELS[i], mx + SORT_MENU_PAD, iy + 2, textCol, false);
         }
     }
 
-    private void drawPanel(GuiGraphics g, int x, int y, int w, int h)
+    private void drawPanel(GuiGraphicsExtractor g, int x, int y, int w, int h)
     {
         g.fill(x,     y,     x + w,     y + h,     0xFF8B8B8B);
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xFFC6C6C6);
@@ -463,7 +462,7 @@ public class HatsScreen extends Screen
         g.fill(x + w - 1, y + h - 2, x + w, y + h, 0x00000000);
     }
 
-    private void renderColorPanel(GuiGraphics g, int mouseX, int mouseY)
+    private void renderColorPanel(GuiGraphicsExtractor g, int mouseX, int mouseY)
     {
         int cx = innerX();
         int cy = innerY() + 44;
@@ -477,10 +476,10 @@ public class HatsScreen extends Screen
         boolean hoverClose = mouseX >= closeX && mouseX < closeX + 10
                           && mouseY >= cy     && mouseY < cy + 10;
         g.fill(closeX, cy, closeX + 10, cy + 10, hoverClose ? 0xFFAA3333 : 0xFF773333);
-        g.drawString(font, "X", closeX + 2, cy + 1, 0xFFFFFF, false);
+        g.text(font, "X", closeX + 2, cy + 1, 0xFFFFFFFF, false);
 
         if (selectedHat == null) {
-            g.drawString(font, "Select a hat first", cx + 4, cy + 6, 0x888888, false);
+            g.text(font, "Select a hat first", cx + 4, cy + 6, 0xFF888888, false);
             return;
         }
 
@@ -500,7 +499,7 @@ public class HatsScreen extends Screen
 
         for (int i = 0; i < 7; i++) {
             int ry = cy + 2 + i * 14;
-            g.drawString(font, labels[i], cx, ry + 2, 0xCCCCCC, false);
+            g.text(font, labels[i], cx, ry + 2, 0xFFCCCCCC, false);
 
             int bx = cx + labelW + 2;
             int by = ry + 1;
@@ -519,13 +518,13 @@ public class HatsScreen extends Screen
             g.fill(knobX - 1, by, knobX + 2, by + bh, 0xFFFFFFFF);
 
             String valStr = String.format("%.2f", vals[i]);
-            g.drawString(font, valStr, bx + sliderW + 2, ry + 2, 0xCCCCCC, false);
+            g.text(font, valStr, bx + sliderW + 2, ry + 2, 0xFFCCCCCC, false);
         }
 
         int resetY = cy + 2 + 7 * 14 + 2;
         boolean hoverReset = mouseX >= cx && mouseX < cx + 40 && mouseY >= resetY && mouseY < resetY + 10;
         g.fill(cx, resetY, cx + 40, resetY + 10, hoverReset ? 0xFFAAAAAA : 0xFF777777);
-        g.drawString(font, "Reset", cx + 2, resetY + 1, 0xFFFFFF, false);
+        g.text(font, "Reset", cx + 2, resetY + 1, 0xFFFFFFFF, false);
     }
 
     @Override
@@ -545,8 +544,12 @@ public class HatsScreen extends Screen
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button)
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0 && sortMenuOpen && sortButton != null) {
             int menuH = SORT_MENU_PAD * 2 + SORT_LABELS.length * SORT_MENU_ITEM_H;
             int mx = sortButton.getX() - SORT_MENU_W - 2;
@@ -590,11 +593,11 @@ public class HatsScreen extends Screen
             return true;
         }
 
-        if (hatGrid != null && hatGrid.mouseClicked(mouseX, mouseY, button)) {
+        if (hatGrid != null && hatGrid.mouseClicked(event, doubleClick)) {
             return true;
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     private boolean handleColorClick(double mouseX, double mouseY)
@@ -640,22 +643,30 @@ public class HatsScreen extends Screen
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button)
+    public boolean mouseReleased(MouseButtonEvent event)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0) {
             draggingSlider = -1;
         }
 
-        if (hatGrid != null) hatGrid.mouseReleased(mouseX, mouseY, button);
+        if (hatGrid != null) hatGrid.mouseReleased(event);
 
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY)
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0 && isInPreviewArea(mouseX)) {
-            if (hasShiftDown()) {
+            if (minecraft.hasShiftDown()) {
                 ClientEventHandler.guiPanX = Mth.clamp(
                     ClientEventHandler.guiPanX - (float)(dragX * 0.01), -2f, 2f);
                 ClientEventHandler.guiPanY = Mth.clamp(
@@ -677,11 +688,11 @@ public class HatsScreen extends Screen
             return true;
         }
 
-        if (hatGrid != null && hatGrid.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+        if (hatGrid != null && hatGrid.mouseDragged(event, dragX, dragY)) {
             return true;
         }
 
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     private void openTradeGui()
@@ -690,19 +701,19 @@ public class HatsScreen extends Screen
     }
 
     @Override
-    protected void renderBlurredBackground(float partialTick)
+    protected void extractBlurredBackground(GuiGraphicsExtractor graphics)
     {
         // disable 1.21+ menu-blur effect over the world
     }
 
     @Override
-    public void renderTransparentBackground(GuiGraphics g)
+    public void extractTransparentBackground(GuiGraphicsExtractor g)
     {
         // skip the dark world darkening on the H-key screen; let the world show through
     }
 
     @Override
-    protected void renderMenuBackground(GuiGraphics g)
+    protected void extractMenuBackground(GuiGraphicsExtractor g)
     {
         // skip the in-world dark dirt-pattern overlay
     }

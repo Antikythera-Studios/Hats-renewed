@@ -8,7 +8,6 @@ import me.guivnf.mods.hats.common.hat.HatRarity;
 import me.guivnf.mods.hats.HatsMod;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 
 import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
@@ -148,19 +147,15 @@ public class PlayerHatData
 
     public static PlayerHatData load(CompoundTag tag)
     {
-        UUID owner = UUID.fromString(tag.getString("owner"));
+        UUID owner = UUID.fromString(tag.getStringOr("owner", ""));
         PlayerHatData data = new PlayerHatData(owner);
-        data.tokens = tag.getInt("tokens");
+        data.tokens = tag.getIntOr("tokens", 0);
 
-        if (tag.contains("equipped", Tag.TAG_COMPOUND)) {
-            data.equippedHat = HatPart.load(tag.getCompound("equipped"));
-        }
+        tag.getCompound("equipped").ifPresent(equipped -> data.equippedHat = HatPart.load(equipped));
 
-        if (tag.contains("inventory", Tag.TAG_LIST)) {
-            ListTag inventoryTag = tag.getList("inventory", Tag.TAG_COMPOUND);
-            for (int i = 0; i < inventoryTag.size(); i++) {
-                data.inventory.add(HatPart.load(inventoryTag.getCompound(i)));
-            }
+        ListTag inventoryTag = tag.getListOrEmpty("inventory");
+        for (int i = 0; i < inventoryTag.size(); i++) {
+            data.inventory.add(HatPart.load(inventoryTag.getCompoundOrEmpty(i)));
         }
 
         return data;

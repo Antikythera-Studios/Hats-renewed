@@ -21,10 +21,10 @@
 // ===================================================================================================
 
 // The tracked mod_version property only holds the minor.patch portion; the major component is derived
-// from the Minecraft version (1.21.1 -> 21), matching the scheme in the root build.gradle.
+// from the Minecraft version (1.21.1 -> 21, 26.1.2 -> 26), matching the scheme in the root build.gradle.
 def mcParts = mc_version.split('\\.')
-def mcMinor = mcParts.length > 1 ? mcParts[1] : mc_version
-def modFullVersion = "${mcMinor}.${mod_version}"
+def mcMajor = mcParts[0] == "1" && mcParts.length > 1 ? mcParts[1] : mcParts[0]
+def modFullVersion = "${mcMajor}.${mod_version}"
 
 // --- Changelog extraction -------------------------------------------------------------------------
 

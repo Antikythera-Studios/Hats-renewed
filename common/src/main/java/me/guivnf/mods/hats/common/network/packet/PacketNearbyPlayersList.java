@@ -19,7 +19,7 @@ public class PacketNearbyPlayersList
         buf.writeInt(players.size());
         for (ServerPlayer p : players) {
             buf.writeUUID(p.getUUID());
-            buf.writeUtf(p.getGameProfile().getName());
+            buf.writeUtf(p.getGameProfile().name());
         }
         return buf;
     }

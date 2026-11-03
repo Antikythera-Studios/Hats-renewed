@@ -13,6 +13,6 @@ public class ClientTradeFeedback
         Component msg = accepted
             ? Component.literal("Trade with " + otherName + " accepted.").withStyle(ChatFormatting.GREEN)
             : Component.literal("Trade with " + otherName + " declined.").withStyle(ChatFormatting.RED);
-        mc.player.displayClientMessage(msg, true);
+        mc.player.sendOverlayMessage(msg);
     }
 }

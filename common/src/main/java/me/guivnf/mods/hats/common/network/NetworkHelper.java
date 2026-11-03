@@ -40,7 +40,7 @@ public class NetworkHelper
 
     public static void syncLoadedEntityHats(ServerPlayer player, HatsSavedData data)
     {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         data.getAllEntityHats().forEach((uuid, hat) -> {
             if (level.getEntity(uuid) == null) return;
             NetworkManager.sendToPlayer(player, HatsNetwork.SYNC_ENTITY_HAT,

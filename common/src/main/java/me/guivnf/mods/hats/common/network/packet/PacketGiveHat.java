@@ -1,5 +1,6 @@
 package me.guivnf.mods.hats.common.network.packet;
 
+import net.minecraft.server.permissions.Permissions;
 import dev.architectury.networking.NetworkManager;
 import me.guivnf.mods.hats.common.hat.HatDefinition;
 import me.guivnf.mods.hats.common.hat.HatPart;
@@ -27,16 +28,16 @@ public class PacketGiveHat
 
         context.queue(() -> {
             ServerPlayer sender = (ServerPlayer) context.getPlayer();
-            if (!sender.hasPermissions(2)) return;
+            if (!sender.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
-            ServerPlayer target = sender.getServer().getPlayerList().getPlayerByName(targetName);
+            ServerPlayer target = sender.level().getServer().getPlayerList().getPlayerByName(targetName);
             if (target == null) return;
 
             HatDefinition def = HatRegistry.get(hatName);
             if (def == null) return;
 
             HatPart hat = def.asHatPart(1);
-            HatsSavedData data = HatsSavedData.get(sender.serverLevel());
+            HatsSavedData data = HatsSavedData.get(sender.level());
             data.addHatToInventory(target.getUUID(), hat);
 
             NetworkHelper.syncInventory(target, data);

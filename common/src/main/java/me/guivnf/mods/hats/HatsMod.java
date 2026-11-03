@@ -62,7 +62,9 @@ public class HatsMod
         dev.architectury.registry.client.level.entity.EntityRendererRegistry.register(
             me.guivnf.mods.hats.common.registry.HatsRegistries.HAT_ENTITY,
             me.guivnf.mods.hats.client.render.HatEntityRenderer::new);
-
+        me.guivnf.mods.hats.mixin.accessor.ConditionalItemModelPropertiesAccessor.hats$getIdMapper().put(
+            net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "offhand"),
+            me.guivnf.mods.hats.client.render.HatLauncherOffhandProperty.MAP_CODEC);
     }
 
     public static void onLoadComplete()

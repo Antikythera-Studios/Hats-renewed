@@ -45,7 +45,7 @@ public final class HatCommand
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher)
     {
         dispatcher.register(Commands.literal("hats")
-            .requires(src -> src.hasPermission(2))
+            .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
             .then(Commands.literal("give")
                 .then(Commands.argument("targets", EntityArgument.entities())
                     .then(Commands.literal("all")
@@ -113,7 +113,7 @@ public final class HatCommand
         int affected = 0;
         for (Entity e : targets) {
             if (!(e instanceof ServerPlayer player)) continue;
-            HatsSavedData data = HatsSavedData.get(player.serverLevel());
+            HatsSavedData data = HatsSavedData.get(player.level());
             for (HatDefinition def : HatRegistry.getAll()) {
                 if (def.isAccessory()) continue;
                 HatPart part = def.asHatPart(1);
@@ -174,7 +174,7 @@ public final class HatCommand
         int affected = 0;
         for (Entity e : targets) {
             if (!(e instanceof ServerPlayer player)) continue;
-            HatsSavedData data = HatsSavedData.get(player.serverLevel());
+            HatsSavedData data = HatsSavedData.get(player.level());
             PlayerHatData pd = data.getOrCreatePlayer(player.getUUID());
             HatPart owning = findOwningHat(pd, accDef);
             if (owning == null) {
@@ -208,7 +208,7 @@ public final class HatCommand
         int affected = 0;
         for (Entity e : targets) {
             if (e instanceof ServerPlayer player) {
-                HatsSavedData data = HatsSavedData.get(player.serverLevel());
+                HatsSavedData data = HatsSavedData.get(player.level());
                 PlayerHatData pd = data.getPlayer(player.getUUID());
                 if (pd != null) {
                     pd.inventory.clear();
@@ -241,7 +241,7 @@ public final class HatCommand
         int affected = 0;
         for (Entity e : targets) {
             if (e instanceof ServerPlayer player) {
-                HatsSavedData data = HatsSavedData.get(player.serverLevel());
+                HatsSavedData data = HatsSavedData.get(player.level());
                 if (data.removeOneFromInventory(player.getUUID(), def.name)) {
                     NetworkHelper.syncInventory(player, data);
                     affected++;
@@ -272,7 +272,7 @@ public final class HatCommand
         int affected = 0;
         for (Entity e : targets) {
             if (!(e instanceof ServerPlayer player)) continue;
-            HatsSavedData data = HatsSavedData.get(player.serverLevel());
+            HatsSavedData data = HatsSavedData.get(player.level());
             PlayerHatData pd = data.getPlayer(player.getUUID());
             if (pd == null) continue;
             HatPart owning = findOwningHat(pd, accDef);
@@ -291,7 +291,7 @@ public final class HatCommand
     private static boolean giveHatToEntity(Entity e, HatDefinition def)
     {
         if (e instanceof ServerPlayer player) {
-            HatsSavedData data = HatsSavedData.get(player.serverLevel());
+            HatsSavedData data = HatsSavedData.get(player.level());
             HatPart part = def.asHatPart(1);
             part.isShowing = false;
             for (HatPart acc : part.accessories) acc.isShowing = false;

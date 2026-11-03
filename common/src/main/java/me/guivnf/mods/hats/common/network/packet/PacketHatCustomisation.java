@@ -31,7 +31,7 @@ public class PacketHatCustomisation
         HatPart finalHat = hat;
         context.queue(() -> {
             ServerPlayer player = (ServerPlayer) context.getPlayer();
-            HatsSavedData data = HatsSavedData.get(player.serverLevel());
+            HatsSavedData data = HatsSavedData.get(player.level());
 
             if (finalHat == null) {
                 data.removeEquipped(player.getUUID());

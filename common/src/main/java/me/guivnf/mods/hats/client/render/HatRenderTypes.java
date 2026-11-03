@@ -1,63 +1,43 @@
 package me.guivnf.mods.hats.client.render;
 
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.Util;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Util;
 
 import java.util.function.Function;
 
-public abstract class HatRenderTypes extends RenderType
+public final class HatRenderTypes
 {
-    protected HatRenderTypes(String pName, VertexFormat pFormat, VertexFormat.Mode pMode,
-            int pBufferSize, boolean pAffectsCrumbling, boolean pSortOnUpload,
-            Runnable pSetupState, Runnable pClearState)
-    {
-        super(pName, pFormat, pMode, pBufferSize, pAffectsCrumbling, pSortOnUpload, pSetupState, pClearState);
-    }
+    private HatRenderTypes() {}
 
-    private static final Function<ResourceLocation, RenderType> HAT_TRANSLUCENT =
-            Util.memoize(texture ->
-            {
-                CompositeState state = CompositeState.builder()
-                        .setShaderState(new ShaderStateShard(GameRenderer::getRendertypeEntityTranslucentShader))
-                        .setTextureState(new TextureStateShard(texture, false, false))
-                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                        .setCullState(NO_CULL)
-                        .setLightmapState(LIGHTMAP)
-                        .setOverlayState(OVERLAY)
-                        .setWriteMaskState(COLOR_DEPTH_WRITE)
-                        .createCompositeState(false);
-                return create("hat_entity_translucent_no_cull",
-                        DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS,
-                        1536, true, true, state);
-            });
+    private static final Function<Identifier, RenderType> HAT_TRANSLUCENT =
+            Util.memoize(texture -> RenderType.create("hat_entity_translucent_no_cull",
+                RenderSetup.builder(RenderPipelines.ENTITY_TRANSLUCENT)
+                    .withTexture("Sampler0", texture)
+                    .useLightmap()
+                    .useOverlay()
+                    .affectsCrumbling()
+                    .sortOnUpload()
+                    .createRenderSetup()));
 
-    private static final Function<ResourceLocation, RenderType> HAT_TRANSLUCENT_CULL =
-            Util.memoize(texture ->
-            {
-                CompositeState state = CompositeState.builder()
-                        .setShaderState(new ShaderStateShard(GameRenderer::getRendertypeEntityTranslucentCullShader))
-                        .setTextureState(new TextureStateShard(texture, false, false))
-                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                        .setCullState(CULL)
-                        .setLightmapState(LIGHTMAP)
-                        .setOverlayState(OVERLAY)
-                        .setWriteMaskState(COLOR_DEPTH_WRITE)
-                        .createCompositeState(false);
-                return create("hat_entity_translucent",
-                        DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS,
-                        1536, true, true, state);
-            });
+    private static final Function<Identifier, RenderType> HAT_TRANSLUCENT_CULL =
+            Util.memoize(texture -> RenderType.create("hat_entity_translucent",
+                RenderSetup.builder(RenderPipelines.ENTITY_TRANSLUCENT_CULL)
+                    .withTexture("Sampler0", texture)
+                    .useLightmap()
+                    .useOverlay()
+                    .affectsCrumbling()
+                    .sortOnUpload()
+                    .createRenderSetup()));
 
-    public static RenderType hatTranslucent(ResourceLocation texture)
+    public static RenderType hatTranslucent(Identifier texture)
     {
         return HAT_TRANSLUCENT.apply(texture);
     }
 
-    public static RenderType hatTranslucentCull(ResourceLocation texture)
+    public static RenderType hatTranslucentCull(Identifier texture)
     {
         return HAT_TRANSLUCENT_CULL.apply(texture);
     }

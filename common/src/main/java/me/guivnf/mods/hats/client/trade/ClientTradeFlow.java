@@ -53,9 +53,9 @@ public class ClientTradeFlow
         if (mc.screen instanceof TradeOfferScreen || mc.screen instanceof TradePartnerSelectScreen) {
             HatsScreen.open();
             if (mc.player != null) {
-                mc.player.displayClientMessage(
+                mc.player.sendOverlayMessage(
                     Component.literal("Trade partner left your range.")
-                        .withStyle(net.minecraft.ChatFormatting.RED), true);
+                        .withStyle(net.minecraft.ChatFormatting.RED));
             }
         }
     }

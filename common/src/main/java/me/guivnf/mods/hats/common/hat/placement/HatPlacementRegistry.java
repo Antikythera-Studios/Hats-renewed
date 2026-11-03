@@ -1,7 +1,7 @@
 package me.guivnf.mods.hats.common.hat.placement;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -13,7 +13,7 @@ public class HatPlacementRegistry
 {
     private static final Map<EntityType<?>, HatPlacementInfo> REGISTRY = new HashMap<>();
 
-    private static final Map<ResourceLocation, HatPlacementInfo> OVERRIDES = new HashMap<>();
+    private static final Map<Identifier, HatPlacementInfo> OVERRIDES = new HashMap<>();
 
     private static final Map<EntityType<?>, HatPlacementInfo> RESOLVED = new HashMap<>();
 
@@ -23,7 +23,7 @@ public class HatPlacementRegistry
         REGISTRY.put(type, info);
     }
 
-    public static void registerOverride(ResourceLocation id, HatPlacementInfo info)
+    public static void registerOverride(Identifier id, HatPlacementInfo info)
     {
         OVERRIDES.put(id, info);
         RESOLVED.clear();
@@ -31,13 +31,13 @@ public class HatPlacementRegistry
 
     public static void registerOverride(EntityType<?> type, HatPlacementInfo info)
     {
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         if (id != null) registerOverride(id, info);
     }
 
     public static void removeOverride(EntityType<?> type)
     {
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         if (id != null) {
             OVERRIDES.remove(id);
             RESOLVED.clear();
@@ -46,7 +46,7 @@ public class HatPlacementRegistry
 
     public static boolean hasOverride(EntityType<?> type)
     {
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         return id != null && OVERRIDES.containsKey(id);
     }
 
@@ -58,7 +58,7 @@ public class HatPlacementRegistry
         HatPlacementInfo cached = RESOLVED.get(type);
         if (cached != null) return cached;
 
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         if (id != null) {
             HatPlacementInfo override = OVERRIDES.get(id);
             if (override != null) {
@@ -79,12 +79,12 @@ public class HatPlacementRegistry
     }
 
 
-    public static Set<Map.Entry<ResourceLocation, HatPlacementInfo>> getOverrideEntries()
+    public static Set<Map.Entry<Identifier, HatPlacementInfo>> getOverrideEntries()
     {
         return OVERRIDES.entrySet();
     }
 
-    public static void getOverrides(Map<ResourceLocation, HatPlacementInfo> out)
+    public static void getOverrides(Map<Identifier, HatPlacementInfo> out)
     {
         out.putAll(OVERRIDES);
     }

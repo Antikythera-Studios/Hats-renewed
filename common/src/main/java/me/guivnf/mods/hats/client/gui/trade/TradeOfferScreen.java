@@ -14,10 +14,11 @@ import me.guivnf.mods.hats.common.network.packet.PacketSendTradeOffer;
 import me.guivnf.mods.hats.common.trade.TradeErrorType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
@@ -159,9 +160,8 @@ public class TradeOfferScreen
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick)
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick)
     {
-        renderBackground(g, mouseX, mouseY, partialTick);
 
         TradeErrorType err = ClientTradeState.consumeError();
         if (err != null) handleError(err);
@@ -176,17 +176,17 @@ public class TradeOfferScreen
         if (configuringHat != null) {
             setSearchVisible(false);
             renderConfigView(g, mouseX, mouseY, player);
-            super.render(g, mouseX, mouseY, partialTick);
+            super.extractRenderState(g, mouseX, mouseY, partialTick);
             return;
         }
         setSearchVisible(true);
 
-        g.drawString(font, title, x + (W - font.width(title)) / 2, y + 8, 0xFF222222, false);
+        g.text(font, title, x + (W - font.width(title)) / 2, y + 8, 0xFF222222, false);
 
-        String localName = player != null ? player.getGameProfile().getName() : "You";
-        g.drawString(font, "You — " + localName, leftGridX, gridY - 12, 0xFF222222, false);
+        String localName = player != null ? player.getGameProfile().name() : "You";
+        g.text(font, "You — " + localName, leftGridX, gridY - 12, 0xFF222222, false);
         String themLabel = "Them — " + targetName;
-        g.drawString(font, themLabel, rightGridX + GRID_W - font.width(themLabel), gridY - 12, 0xFF222222, false);
+        g.text(font, themLabel, rightGridX + GRID_W - font.width(themLabel), gridY - 12, 0xFF222222, false);
 
         float[] savedCloth = EpicFightCompat.captureClothState(player);
 
@@ -197,7 +197,7 @@ public class TradeOfferScreen
 
         EpicFightCompat.restoreClothState(player, savedCloth);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         renderTooltips(g, mouseX, mouseY);
     }
@@ -214,8 +214,8 @@ public class TradeOfferScreen
     {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.displayClientMessage(
-                Component.translatable(err.messageKey()).withStyle(ChatFormatting.RED), true);
+            mc.player.sendOverlayMessage(
+                Component.translatable(err.messageKey()).withStyle(ChatFormatting.RED));
         }
         ClientTradeFlow.closeBuilder();
         mc.setScreen(null);
@@ -267,7 +267,7 @@ public class TradeOfferScreen
         return base.copy();
     }
 
-    private void renderGrid(GuiGraphics g, int mouseX, int mouseY, boolean left,
+    private void renderGrid(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean left,
                             @Nullable Player player, List<HatPart> src, int scroll)
     {
         int gx = left ? leftGridX : rightGridX;
@@ -281,7 +281,7 @@ public class TradeOfferScreen
 
         if (src.isEmpty()) {
             String s = left ? "No hats" : "Loading...";
-            g.drawString(font, s, gx + 4, gy + 4, 0xFFAAAAAA, false);
+            g.text(font, s, gx + 4, gy + 4, 0xFFAAAAAA, false);
         } else if (player != null) {
             int hovered = -1;
             int gridContentW = GRID_W - SCROLL_W;
@@ -317,7 +317,7 @@ public class TradeOfferScreen
         renderScrollbar(g, gx + GRID_W - SCROLL_W, gy, src.size(), scroll);
     }
 
-    private void renderCell(GuiGraphics g, HatPart hat, int cx, int cy, boolean hovered,
+    private void renderCell(GuiGraphicsExtractor g, HatPart hat, int cx, int cy, boolean hovered,
                             int mouseX, int mouseY, Player player, boolean left)
     {
         int bg = hovered ? 0xFF505060 : 0xFF404040;
@@ -348,7 +348,7 @@ public class TradeOfferScreen
             String tag = "x" + selectedCount;
             int tw = font.width(tag);
             g.fill(cx + CELL_W - tw - 4, cy + CELL_H - 11, cx + CELL_W - 1, cy + CELL_H - 1, 0xCC1A4A8A);
-            g.drawString(font, tag, cx + CELL_W - tw - 2, cy + CELL_H - 10, 0xFFFFFFFF, false);
+            g.text(font, tag, cx + CELL_W - tw - 2, cy + CELL_H - 10, 0xFFFFFFFF, false);
         }
         if (available <= 0) {
             g.fill(cx + 1, cy + 1, cx + CELL_W - 1, cy + CELL_H - 1, 0x88000000);
@@ -361,7 +361,7 @@ public class TradeOfferScreen
         }
     }
 
-    private void renderBurger(GuiGraphics g, int cx, int cy, int mouseX, int mouseY)
+    private void renderBurger(GuiGraphicsExtractor g, int cx, int cy, int mouseX, int mouseY)
     {
         int bx = cx + 1;
         int by = cy + 1;
@@ -374,7 +374,7 @@ public class TradeOfferScreen
         }
     }
 
-    private void renderScrollbar(GuiGraphics g, int sbX, int sbY, int total, int scroll)
+    private void renderScrollbar(GuiGraphicsExtractor g, int sbX, int sbY, int total, int scroll)
     {
         g.fill(sbX, sbY, sbX + SCROLL_W, sbY + GRID_H, 0xFF2A2A2A);
         g.fill(sbX + 1, sbY + 1, sbX + SCROLL_W - 1, sbY + GRID_H - 1, 0xFF333333);
@@ -391,7 +391,7 @@ public class TradeOfferScreen
         g.fill(sbX + 1, thumbY, sbX + SCROLL_W - 1, thumbY + 1, 0xFFAAAAAA);
     }
 
-    private void renderCenter(GuiGraphics g, int mouseX, int mouseY, @Nullable Player player)
+    private void renderCenter(GuiGraphicsExtractor g, int mouseX, int mouseY, @Nullable Player player)
     {
         renderSlot(g, leftSlotX, slotY, leftSelected, player);
         renderSlot(g, rightSlotX, slotY, rightSelected, player);
@@ -404,7 +404,7 @@ public class TradeOfferScreen
         renderArrow(g, aXStart, aXEnd, aMidY, leftHas, rightHas);
     }
 
-    private void renderSlot(GuiGraphics g, int sx, int sy, List<HatPart> selected, @Nullable Player player)
+    private void renderSlot(GuiGraphicsExtractor g, int sx, int sy, List<HatPart> selected, @Nullable Player player)
     {
         g.fill(sx - 1, sy - 1, sx + SLOT_SIZE + 1, sy + SLOT_SIZE + 1, 0xFF222222);
         g.fill(sx,     sy,     sx + SLOT_SIZE,     sy + SLOT_SIZE,     0xFF555555);
@@ -426,13 +426,13 @@ public class TradeOfferScreen
             String tag = "x" + selected.size();
             int tw = font.width(tag);
             g.fill(sx + SLOT_SIZE - tw - 4, sy + SLOT_SIZE - 11, sx + SLOT_SIZE - 1, sy + SLOT_SIZE - 1, 0xCC1A4A8A);
-            g.drawString(font, tag, sx + SLOT_SIZE - tw - 2, sy + SLOT_SIZE - 10, 0xFFFFFFFF, false);
+            g.text(font, tag, sx + SLOT_SIZE - tw - 2, sy + SLOT_SIZE - 10, 0xFFFFFFFF, false);
         }
 
         drawScrollingName(g, top.name, sx, sy + SLOT_SIZE + 4, SLOT_SIZE, 0xFF222222);
     }
 
-    private void renderArrow(GuiGraphics g, int x1, int x2, int yMid, boolean leftHas, boolean rightHas)
+    private void renderArrow(GuiGraphicsExtractor g, int x1, int x2, int yMid, boolean leftHas, boolean rightHas)
     {
         if (!leftHas && !rightHas) {
             g.fill(x1, yMid + 1, x2, yMid + 3, 0xFF777777);
@@ -467,7 +467,7 @@ public class TradeOfferScreen
         }
     }
 
-    private void renderTooltips(GuiGraphics g, int mouseX, int mouseY)
+    private void renderTooltips(GuiGraphicsExtractor g, int mouseX, int mouseY)
     {
         int hov = leftHovered;
         List<HatPart> src = getSourceList(true);
@@ -490,7 +490,7 @@ public class TradeOfferScreen
         } else {
             lines.add(Component.literal(h.name));
         }
-        g.renderTooltip(font,
+        g.setTooltipForNextFrame(font,
             lines.stream().map(Component::getVisualOrderText).toList(),
             mouseX, mouseY);
     }
@@ -503,7 +503,7 @@ public class TradeOfferScreen
         return c != null ? c : 0xFFFFFF;
     }
 
-    private void drawScrollingName(GuiGraphics g, String s, int xPos, int yPos, int availW, int color)
+    private void drawScrollingName(GuiGraphicsExtractor g, String s, int xPos, int yPos, int availW, int color)
     {
         float sc = 0.7f;
         int textW = (int)(font.width(s) * sc);
@@ -525,19 +525,19 @@ public class TradeOfferScreen
         }
 
         g.enableScissor(xPos, yPos - 1, xPos + availW, yPos + (int)(font.lineHeight * sc) + 1);
-        g.pose().pushPose();
-        g.pose().translate(xPos + xOff, yPos, 0);
-        g.pose().scale(sc, sc, 1f);
-        g.drawString(font, s, 0, 0, color, false);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(xPos + xOff, yPos);
+        g.pose().scale(sc, sc);
+        g.text(font, s, 0, 0, color, false);
+        g.pose().popMatrix();
         g.disableScissor();
     }
 
-    private void renderConfigView(GuiGraphics g, int mouseX, int mouseY, @Nullable Player player)
+    private void renderConfigView(GuiGraphicsExtractor g, int mouseX, int mouseY, @Nullable Player player)
     {
         if (configuringHat == null) return;
 
-        g.drawString(font, "Configure accessories — " + configuringHat.name,
+        g.text(font, "Configure accessories — " + configuringHat.name,
             x + 8, y + 8, 0xFF222222, false);
 
         int previewSize = 80;
@@ -564,11 +564,11 @@ public class TradeOfferScreen
 
         g.fill(listX - 1, listY - 1, listX + listW + 1, listY + listH + 1, 0xFF555555);
         g.fill(listX,     listY,     listX + listW,     listY + listH,     0xFF2B2B2B);
-        g.drawString(font, "Accessories:", listX + 4, listY + 4, 0xFFDDDDDD, false);
+        g.text(font, "Accessories:", listX + 4, listY + 4, 0xFFDDDDDD, false);
 
         HatDefinition def = HatRegistry.get(configuringHat.getRegistryKey());
         if (def == null || configOwnedAccessories.isEmpty()) {
-            g.drawString(font, "(none)", listX + 4, listY + 18, 0xFFAAAAAA, false);
+            g.text(font, "(none)", listX + 4, listY + 18, 0xFFAAAAAA, false);
         } else {
             int rowY = listY + 16;
             int rowH = 14;
@@ -588,7 +588,7 @@ public class TradeOfferScreen
                     g.fill(boxX + 3, boxY + 4, boxX + 4, boxY + 7, 0xFFFFFFFF);
                     g.fill(boxX + 4, boxY + 5, boxX + 7, boxY + 6, 0xFFFFFFFF);
                 }
-                g.drawString(font, accDef.name, boxX + 14, rowY + 3, 0xFFFFFFFF, false);
+                g.text(font, accDef.name, boxX + 14, rowY + 3, 0xFFFFFFFF, false);
                 rowY += rowH;
                 if (rowY + rowH > listY + listH) break;
             }
@@ -598,7 +598,7 @@ public class TradeOfferScreen
         boolean doneHov = mouseX >= listX && mouseX < listX + 70
                        && mouseY >= doneY && mouseY < doneY + 18;
         g.fill(listX, doneY, listX + 70, doneY + 18, doneHov ? 0xFFAAAAAA : 0xFF777777);
-        g.drawString(font, "Done", listX + 28, doneY + 5, 0xFFFFFFFF, false);
+        g.text(font, "Done", listX + 28, doneY + 5, 0xFFFFFFFF, false);
     }
 
     private boolean isAccessoryEnabled(String accName)
@@ -631,10 +631,14 @@ public class TradeOfferScreen
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button)
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (configuringHat != null) {
-            return handleConfigClick(mouseX, mouseY, button);
+            return handleConfigClick(event, doubleClick);
         }
 
         if (button == 0) {
@@ -644,11 +648,15 @@ public class TradeOfferScreen
             if (handleGridClick(mouseX, mouseY, false)) return true;
             if (handleSlotClick(mouseX, mouseY)) return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
-    private boolean handleConfigClick(double mouseX, double mouseY, int button)
+    private boolean handleConfigClick(MouseButtonEvent event, boolean doubleClick)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (configuringHat == null) return false;
 
         int previewSize = 80;
@@ -683,7 +691,7 @@ public class TradeOfferScreen
             }
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     private void commitConfig()
@@ -729,18 +737,26 @@ public class TradeOfferScreen
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button)
+    public boolean mouseReleased(MouseButtonEvent event)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0) {
             leftScrollDragging = false;
             rightScrollDragging = false;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY)
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0 && (leftScrollDragging || rightScrollDragging)) {
             boolean left = leftScrollDragging;
             int total = getSourceList(left).size();
@@ -757,7 +773,7 @@ public class TradeOfferScreen
             if (left) leftScroll = newScroll; else rightScroll = newScroll;
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     private boolean handleGridClick(double mouseX, double mouseY, boolean left)
@@ -854,13 +870,13 @@ public class TradeOfferScreen
     }
 
     @Override
-    protected void renderBlurredBackground(float partialTick)
+    protected void extractBlurredBackground(GuiGraphicsExtractor graphics)
     {
         // disable 1.21+ menu-blur effect over the world
     }
 
     @Override
-    protected void renderMenuBackground(GuiGraphics g)
+    protected void extractMenuBackground(GuiGraphicsExtractor g)
     {
         // skip the in-world dark dirt-pattern overlay
     }

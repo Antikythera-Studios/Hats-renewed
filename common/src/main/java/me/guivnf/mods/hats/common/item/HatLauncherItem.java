@@ -5,7 +5,7 @@ import me.guivnf.mods.hats.common.network.HatsNetwork;
 import me.guivnf.mods.hats.common.network.packet.PacketLaunchHat;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -24,11 +24,9 @@ public class HatLauncherItem
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand)
+    public InteractionResult use(Level level, Player player, InteractionHand hand)
     {
-        ItemStack stack = player.getItemInHand(hand);
-
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             if (player.isShiftKeyDown()) {
                 me.guivnf.mods.hats.client.gui.HatLaunchSelectScreen.open();
             } else {
@@ -39,7 +37,7 @@ public class HatLauncherItem
             }
         }
 
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable
@@ -49,8 +47,7 @@ public class HatLauncherItem
             stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
         if (custom == null) return null;
         CompoundTag tag = custom.copyTag();
-        if (!tag.contains(HAT_PART_TAG)) return null;
-        return me.guivnf.mods.hats.common.hat.HatPart.load(tag.getCompound(HAT_PART_TAG));
+        return tag.getCompound(HAT_PART_TAG).map(me.guivnf.mods.hats.common.hat.HatPart::load).orElse(null);
     }
 
     public static void storeHat(ItemStack stack, @Nullable me.guivnf.mods.hats.common.hat.HatPart hat)

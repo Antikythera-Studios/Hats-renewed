@@ -1,6 +1,7 @@
 {
-  "pack": {
-    "description": "Hats resources",
-    "pack_format": 34
-  }
+    "pack": {
+        "description": "Hats resources",
+        "min_format": [84, 0],
+        "max_format": 84
+    }
 }

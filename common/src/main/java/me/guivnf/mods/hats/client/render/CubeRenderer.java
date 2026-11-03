@@ -6,7 +6,7 @@ import org.joml.Matrix4f;
 
 public class CubeRenderer
 {
-    public static void renderCube(PoseStack poseStack, VertexConsumer consumer,
+    public static void renderCube(PoseStack.Pose poseRef, VertexConsumer consumer,
             float ox, float oy, float oz, float sx, float sy, float sz,
             float inflateX, float inflateY, float inflateZ,
             float texU, float texV, float dimX, float dimY, float dimZ,
@@ -14,7 +14,6 @@ public class CubeRenderer
             int light, int overlay, float r, float g, float b, float a,
             boolean mirror, boolean flatX, boolean flatY, boolean flatZ, boolean swapYFaceUV)
     {
-        PoseStack.Pose poseRef = poseStack.last();
         Matrix4f pose = poseRef.pose();
 
         float dX = dimX;

@@ -1,17 +1,12 @@
 package me.guivnf.mods.hats.mixin;
 
-import com.mojang.blaze3d.platform.Lighting;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
-import me.guivnf.mods.hats.client.render.HatRenderer;
+import me.guivnf.mods.hats.client.gui.HatModelRenderState;
 import me.guivnf.mods.hats.common.hat.HatDefinition;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.common.hat.HatRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
@@ -24,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
-@Mixin(GuiGraphics.class)
+@Mixin(GuiGraphicsExtractor.class)
 public abstract class MixinGuiGraphics
 {
     private static final String HAT_INSERTION_PREFIX = "hats:model:";
@@ -32,16 +27,13 @@ public abstract class MixinGuiGraphics
     private static final int MODEL_TEXT_GAP = 6;
     private static final int INNER_PAD = 4;
 
-    @Inject(method = "renderComponentHoverEffect", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "componentHoverEffect", at = @At("HEAD"), cancellable = true)
     private void hats$renderHatHover(Font font, Style style, int mouseX, int mouseY, CallbackInfo ci)
     {
         if (style == null) return;
         String insertion = style.getInsertion();
         if (insertion == null || !insertion.startsWith(HAT_INSERTION_PREFIX)) return;
-        HoverEvent he = style.getHoverEvent();
-        if (he == null) return;
-        Component tooltipText = he.getValue(HoverEvent.Action.SHOW_TEXT);
-        if (tooltipText == null) return;
+        if (!(style.getHoverEvent() instanceof HoverEvent.ShowText(Component tooltipText))) return;
 
         String payload = insertion.substring(HAT_INSERTION_PREFIX.length());
         int pipe = payload.indexOf('|');
@@ -57,7 +49,7 @@ public abstract class MixinGuiGraphics
             }
         }
 
-        GuiGraphics gg = (GuiGraphics)(Object) this;
+        GuiGraphicsExtractor gg = (GuiGraphicsExtractor)(Object) this;
         Minecraft mc = Minecraft.getInstance();
 
         int screenW = mc.getWindow().getGuiScaledWidth();
@@ -83,6 +75,7 @@ public abstract class MixinGuiGraphics
         if (boxY + innerH + INNER_PAD * 2 > screenH) boxY = screenH - innerH - INNER_PAD * 2 - 4;
         if (boxX < 4) boxX = 4;
 
+        gg.nextStratum();
         hats$drawTooltipBackground(gg, boxX, boxY, innerW, innerH);
 
         HatPart part = def.asHatPart(1);
@@ -91,18 +84,18 @@ public abstract class MixinGuiGraphics
 
         int hatCenterX = boxX + MODEL_BOX / 2;
         int hatCenterY = boxY + innerH / 2;
-        hats$drawHatModel(gg, mc, part, hatCenterX, hatCenterY);
+        hats$drawHatModel(gg, part, hatCenterX, hatCenterY);
 
         int textX = boxX + MODEL_BOX + MODEL_TEXT_GAP;
         int textStartY = boxY + (innerH - textBlockH) / 2;
         for (int i = 0; i < lines.size(); i++) {
-            gg.drawString(font, lines.get(i), textX, textStartY + i * font.lineHeight, -1);
+            gg.text(font, lines.get(i), textX, textStartY + i * font.lineHeight, 0xFFFFFFFF);
         }
 
         ci.cancel();
     }
 
-    private void hats$drawTooltipBackground(GuiGraphics gg, int x, int y, int innerW, int innerH)
+    private void hats$drawTooltipBackground(GuiGraphicsExtractor gg, int x, int y, int innerW, int innerH)
     {
         int x0 = x - INNER_PAD;
         int y0 = y - INNER_PAD;
@@ -125,36 +118,10 @@ public abstract class MixinGuiGraphics
         gg.fill(x0, y1 - 1, x1, y1, outline2);
     }
 
-    private void hats$drawHatModel(GuiGraphics gg, Minecraft mc, HatPart part, int cx, int cy)
+    private void hats$drawHatModel(GuiGraphicsExtractor gg, HatPart part, int cx, int cy)
     {
-        PoseStack pose = gg.pose();
-        pose.pushPose();
-
-        pose.translate(cx, cy, 100f);
-
         float yaw = (System.currentTimeMillis() % 6000L) / 6000f * 360f;
-        pose.mulPose(Axis.YP.rotationDegrees(yaw));
-
-        float scale = MODEL_BOX * 0.5f;
-        pose.scale(scale, scale, scale);
-
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-
-        gg.flush();
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        Lighting.setupForEntityInInventory();
-        mc.gameRenderer.lightTexture().turnOnLightLayer();
-        RenderSystem.enableDepthTest();
-        HatRenderer.setForceNoCull(true);
-        HatRenderer.render(pose, buffers, 0xF000F0,
-            net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
-            part, 0, 0, 0, 0, 0, 0, 1f);
-        HatRenderer.setForceNoCull(false);
-        buffers.endBatch();
-        RenderSystem.disableDepthTest();
-        mc.gameRenderer.lightTexture().turnOffLightLayer();
-        Lighting.setupFor3DItems();
-
-        pose.popPose();
+        int half = MODEL_BOX / 2;
+        HatModelRenderState.submit(gg, part, yaw, cx - half, cy - half, cx + half, cy + half, MODEL_BOX * 0.5f);
     }
 }

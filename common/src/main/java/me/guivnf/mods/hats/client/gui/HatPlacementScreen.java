@@ -1,28 +1,29 @@
 package me.guivnf.mods.hats.client.gui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.*;
 import me.guivnf.mods.hats.client.cache.ClientHatCache;
+import me.guivnf.mods.hats.client.render.LayerHat;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.common.hat.HatRegistry;
 import me.guivnf.mods.hats.common.hat.placement.HatPlacementInfo;
 import me.guivnf.mods.hats.common.hat.placement.HatPlacementJsonLoader;
 import me.guivnf.mods.hats.common.hat.placement.HatPlacementRegistry;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Quaternionf;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,7 +42,7 @@ public class HatPlacementScreen extends Screen
     private float camOffsetX = 0f;
     private float camOffsetY = 0f;
 
-    private final List<ResourceLocation> entityIds;
+    private final List<Identifier> entityIds;
     private int entityDropdownOpen  = 0;
     private int entityScrollOffset  = 0;
     private int selectedEntityIndex = 0;
@@ -89,11 +90,11 @@ public class HatPlacementScreen extends Screen
             .filter(e -> {
                 if (e.getValue().getCategory() != MobCategory.MISC) return true;
                 if (mc.level == null) return false;
-                try { return e.getValue().create(mc.level) instanceof LivingEntity; }
+                try { return e.getValue().create(mc.level, EntitySpawnReason.LOAD) instanceof LivingEntity; }
                 catch (Exception ignored) { return false; }
             })
-            .map(e -> e.getKey().location())
-            .sorted(Comparator.comparing(ResourceLocation::toString))
+            .map(e -> e.getKey().identifier())
+            .sorted(Comparator.comparing(Identifier::toString))
             .collect(Collectors.toList());
 
         hatNames = HatRegistry.getAll().stream()
@@ -142,7 +143,7 @@ public class HatPlacementScreen extends Screen
     {
         if (previewEntity == null) return;
         applyToRegistry();
-        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(previewEntity.getType());
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(previewEntity.getType());
         if (id != null) {
             HatPlacementJsonLoader.saveOne(id, HatPlacementRegistry.get(previewEntity));
         }
@@ -153,10 +154,10 @@ public class HatPlacementScreen extends Screen
         persistCurrent();
         previewEntity = null;
         if (entityIds.isEmpty() || minecraft.level == null) return;
-        ResourceLocation id = entityIds.get(selectedEntityIndex);
-        EntityType<?> type  = BuiltInRegistries.ENTITY_TYPE.get(id);
+        Identifier id = entityIds.get(selectedEntityIndex);
+        EntityType<?> type  = BuiltInRegistries.ENTITY_TYPE.getValue(id);
         try {
-            if (type.create(minecraft.level) instanceof LivingEntity living) {
+            if (type != null && type.create(minecraft.level, EntitySpawnReason.LOAD) instanceof LivingEntity living) {
                 living.yBodyRot  = 180.0F;
                 living.yBodyRotO = 180.0F;
                 living.setYRot(  180.0F);
@@ -193,29 +194,27 @@ public class HatPlacementScreen extends Screen
 
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick)
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick)
     {
-        renderBackground(g, mouseX, mouseY, partialTick);
         g.fill(0, 0, viewportW(), height, 0xFF1A1A1A);
 
         renderViewport(g, partialTick);
 
-        RenderSystem.disableDepthTest();
 
         renderPanel(g, mouseX, mouseY);
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         if (entityDropdownOpen == 1) renderEntityDropdown(g, mouseX, mouseY);
         if (hatDropdownOpen    == 1) renderHatDropdown(g, mouseX, mouseY);
     }
 
 
-    private void renderViewport(GuiGraphics g, float partialTick)
+    private void renderViewport(GuiGraphicsExtractor g, float partialTick)
     {
         if (previewEntity == null) {
             if (minecraft.level == null) {
                 String msg = "Load a world to preview entities";
-                g.drawString(font, msg,
+                g.text(font, msg,
                     (viewportW() - font.width(msg)) / 2,
                     height / 2 - 4, 0xFF888888, false);
             }
@@ -229,148 +228,41 @@ public class HatPlacementScreen extends Screen
 
         int renderScale = Math.max(8, (int)(height * 0.4f / maxDim / camZoom));
 
-        int screenX = viewportW() / 2;
-        int screenY = height / 2 + (int)(bbH * renderScale * 0.4f);
-
-        int scale = (int) minecraft.getWindow().getGuiScale();
-        int fbH   = minecraft.getWindow().getHeight();
-        RenderSystem.enableScissor(0, 0, viewportW() * scale, fbH);
-
-        org.joml.Matrix4fStack mvs = RenderSystem.getModelViewStack();
-        mvs.pushMatrix();
-        mvs.translate((float)(screenX + camOffsetX), (float)(screenY + camOffsetY), 1050.0F);
-        mvs.scale(1.0F, 1.0F, -1.0F);
-        RenderSystem.applyModelViewMatrix();
-
-        PoseStack pose = new PoseStack();
-        pose.translate(0.0, 0.0, 1000.0);
-        pose.scale(renderScale, renderScale, renderScale);
-
-        Quaternionf pitchQuat = new Quaternionf().rotateX(camPitch * Mth.DEG_TO_RAD);
-        Quaternionf flipQuat  = new Quaternionf().rotateZ((float)Math.PI);
-        flipQuat.mul(pitchQuat);
-        flipQuat.mul(new Quaternionf().rotateY(camYaw * Mth.DEG_TO_RAD));
-        pose.mulPose(flipQuat);
-
-        drawGrid3D(pose);
-
-        float savedBodyRot  = previewEntity.yBodyRot;
-        float savedBodyRotO = previewEntity.yBodyRotO;
-        float savedYaw      = previewEntity.getYRot();
-        float savedPitch    = previewEntity.getXRot();
-        float savedHeadYaw  = previewEntity.yHeadRot;
-        float savedHeadYawO = previewEntity.yHeadRotO;
-
-        previewEntity.yBodyRot  = 180.0F;
-        previewEntity.yBodyRotO = 180.0F;
-        previewEntity.setYRot(  180.0F);
-        previewEntity.yHeadRot  = 180.0F;
-        previewEntity.yHeadRotO = 180.0F;
-        previewEntity.setXRot(0.0F);
+        float originX = camOffsetX;
+        float originY = bbH * renderScale * 0.4f + camOffsetY;
 
         HatPart saved = ClientHatCache.getEntityHat(previewEntity.getUUID());
-        ClientHatCache.setEntityHat(previewEntity.getUUID(),
-            previewHat != null ? previewHat : null);
+        ClientHatCache.setEntityHat(previewEntity.getUUID(), previewHat);
 
-        EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
-        dispatcher.overrideCameraOrientation(new Quaternionf(pitchQuat).conjugate());
-        dispatcher.setRenderShadow(false);
+        EntityRenderState entityState;
+        LayerHat.RENDERING_HAT_GUI_PREVIEW.set(true);
+        try {
+            entityState = minecraft.getEntityRenderDispatcher().getRenderer(previewEntity)
+                .createRenderState(previewEntity, partialTick);
+        } finally {
+            LayerHat.RENDERING_HAT_GUI_PREVIEW.set(false);
+            ClientHatCache.setEntityHat(previewEntity.getUUID(), saved);
+        }
 
-        MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
-        RenderSystem.runAsFancy(() ->
-            dispatcher.render(previewEntity, 0.0, 0.0, 0.0, 0.0F, partialTick,
-                pose, buffers, LightTexture.FULL_BRIGHT));
-        buffers.endBatch();
+        entityState.shadowPieces.clear();
+        entityState.outlineColor = 0;
+        entityState.nameTag = null;
+        entityState.lightCoords = 15728880;
+        if (entityState instanceof LivingEntityRenderState living) {
+            living.bodyRot = 180.0F;
+            living.yRot = 0.0F;
+            living.xRot = 0.0F;
+        }
 
-        dispatcher.setRenderShadow(true);
-
-        ClientHatCache.setEntityHat(previewEntity.getUUID(), saved);
-        previewEntity.yBodyRot  = savedBodyRot;
-        previewEntity.yBodyRotO = savedBodyRotO;
-        previewEntity.setYRot(savedYaw);
-        previewEntity.setXRot(savedPitch);
-        previewEntity.yHeadRot  = savedHeadYaw;
-        previewEntity.yHeadRotO = savedHeadYawO;
-
-        if (previewHat == null) drawWireframe3D(pose, bbH);
-
-        mvs.popMatrix();
-        RenderSystem.applyModelViewMatrix();
-        RenderSystem.disableScissor();
+        new PlacementViewportRenderState(entityState, camYaw, camPitch, renderScale, originX, originY,
+            bbH, previewHat == null, scale * 0.25f, offsetX, offsetY, offsetZ, rotX, rotY, rotZ,
+            0, 0, viewportW(), height, 1.0f, null,
+            PlacementViewportRenderState.boundsOf(0, 0, viewportW(), height)).submit(g);
 
         renderGizmo(g);
     }
 
-    private void drawGrid3D(PoseStack pose)
-    {
-        RenderSystem.disableDepthTest();
-        RenderSystem.setShader(net.minecraft.client.renderer.GameRenderer::getPositionColorShader);
-
-        org.joml.Matrix4f mat = pose.last().pose();
-        BufferBuilder buf = Tesselator.getInstance().begin(
-            VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
-
-        int   lines   = 10;
-        float spacing = 0.5f;
-        float extent  = lines * spacing;
-
-        for (int i = -lines; i <= lines; i++) {
-            float p      = i * spacing;
-            float bright = i == 0 ? 0.55f : 0.28f;
-            float alpha  = i == 0 ? 1.0f  : 0.7f;
-
-            buf.addVertex(mat, -extent, 0f, p).setColor(bright, bright, bright, alpha);
-            buf.addVertex(mat,  extent, 0f, p).setColor(bright, bright, bright, alpha);
-            buf.addVertex(mat, p, 0f, -extent).setColor(bright, bright, bright, alpha);
-            buf.addVertex(mat, p, 0f,  extent).setColor(bright, bright, bright, alpha);
-        }
-
-        com.mojang.blaze3d.vertex.MeshData mesh = buf.build();
-        if (mesh != null) BufferUploader.drawWithShader(mesh);
-        RenderSystem.enableDepthTest();
-    }
-
-    private void drawWireframe3D(PoseStack pose, float bbHeight)
-    {
-        RenderSystem.enableDepthTest();
-        RenderSystem.setShader(net.minecraft.client.renderer.GameRenderer::getPositionColorShader);
-
-        float hs = scale * 0.25f;
-        float r = 1f, gr = 0.2f, bl = 0.2f, a = 1f;
-
-        pose.pushPose();
-        pose.translate(offsetX / 16f, bbHeight + offsetY / 16f, offsetZ / 16f);
-        if (rotZ != 0f) pose.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(rotZ));
-        if (rotY != 0f) pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(rotY));
-        if (rotX != 0f) pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(rotX));
-
-        org.joml.Matrix4f mat = pose.last().pose();
-
-        BufferBuilder buf = Tesselator.getInstance().begin(
-            VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
-
-        // bottom rect
-        buf.addVertex(mat,-hs,-hs,-hs).setColor(r,gr,bl,a); buf.addVertex(mat, hs,-hs,-hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat, hs,-hs,-hs).setColor(r,gr,bl,a); buf.addVertex(mat, hs,-hs, hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat, hs,-hs, hs).setColor(r,gr,bl,a); buf.addVertex(mat,-hs,-hs, hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat,-hs,-hs, hs).setColor(r,gr,bl,a); buf.addVertex(mat,-hs,-hs,-hs).setColor(r,gr,bl,a);
-        // top rect
-        buf.addVertex(mat,-hs, hs,-hs).setColor(r,gr,bl,a); buf.addVertex(mat, hs, hs,-hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat, hs, hs,-hs).setColor(r,gr,bl,a); buf.addVertex(mat, hs, hs, hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat, hs, hs, hs).setColor(r,gr,bl,a); buf.addVertex(mat,-hs, hs, hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat,-hs, hs, hs).setColor(r,gr,bl,a); buf.addVertex(mat,-hs, hs,-hs).setColor(r,gr,bl,a);
-        // verticals
-        buf.addVertex(mat,-hs,-hs,-hs).setColor(r,gr,bl,a); buf.addVertex(mat,-hs, hs,-hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat, hs,-hs,-hs).setColor(r,gr,bl,a); buf.addVertex(mat, hs, hs,-hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat, hs,-hs, hs).setColor(r,gr,bl,a); buf.addVertex(mat, hs, hs, hs).setColor(r,gr,bl,a);
-        buf.addVertex(mat,-hs,-hs, hs).setColor(r,gr,bl,a); buf.addVertex(mat,-hs, hs, hs).setColor(r,gr,bl,a);
-
-        com.mojang.blaze3d.vertex.MeshData mesh = buf.build();
-        if (mesh != null) BufferUploader.drawWithShader(mesh);
-        pose.popPose();
-    }
-
-    private void renderGizmo(GuiGraphics g)
+    private void renderGizmo(GuiGraphicsExtractor g)
     {
         int gx = panelX() + 4;
         int gy = 4;
@@ -387,18 +279,18 @@ public class HatPlacementScreen extends Screen
         int xex = cx + (int)( Math.cos(yr) * len);
         int xey = cy + (int)( Math.sin(pr) * (len * 0.5));
         drawLine2D(g, cx, cy, xex, xey, 0xFFFF4444);
-        g.drawString(font, "X", xex + 2, xey - 3, 0xFFFF4444, false);
+        g.text(font, "X", xex + 2, xey - 3, 0xFFFF4444, false);
 
         drawLine2D(g, cx, cy, cx, cy - len, 0xFF44FF44);
-        g.drawString(font, "Y", cx + 2, cy - len - 3, 0xFF44FF44, false);
+        g.text(font, "Y", cx + 2, cy - len - 3, 0xFF44FF44, false);
 
         int zex = cx - (int)( Math.sin(yr) * len);
         int zey = cy + (int)( Math.sin(pr) * (len * 0.5));
         drawLine2D(g, cx, cy, zex, zey, 0xFF4444FF);
-        g.drawString(font, "Z", zex + 2, zey - 3, 0xFF4444FF, false);
+        g.text(font, "Z", zex + 2, zey - 3, 0xFF4444FF, false);
     }
 
-    private void drawLine2D(GuiGraphics g, int x1, int y1, int x2, int y2, int color)
+    private void drawLine2D(GuiGraphicsExtractor g, int x1, int y1, int x2, int y2, int color)
     {
         int dx = x2 - x1, dy = y2 - y1;
         int steps = Math.max(Math.abs(dx), Math.abs(dy));
@@ -409,7 +301,7 @@ public class HatPlacementScreen extends Screen
     }
 
 
-    private void renderPanel(GuiGraphics g, int mouseX, int mouseY)
+    private void renderPanel(GuiGraphicsExtractor g, int mouseX, int mouseY)
     {
         int px = panelX();
         g.fill(px, 0, px + PANEL_W, height, 0xFF2A2A2A);
@@ -419,13 +311,13 @@ public class HatPlacementScreen extends Screen
         int cw   = PANEL_W - 8;
         int curY = GIZMO_SIZE + 8;
 
-        g.drawString(font, "Entity:", cx, curY, 0xCCCCCC, false);
+        g.text(font, "Entity:", cx, curY, 0xFFCCCCCC, false);
         curY += 10;
         String eLabel = entityIds.isEmpty() ? "(none)" : entityIds.get(selectedEntityIndex).toString();
         drawDropBtn(g, cx, curY, cw, eLabel, entityDropdownOpen == 1, mouseX, mouseY);
         curY += FIELD_H + FIELD_PAD + 6;
 
-        g.drawString(font, "Offset / Scale:", cx, curY, 0xCCCCCC, false);
+        g.text(font, "Offset / Scale:", cx, curY, 0xFFCCCCCC, false);
         curY += 10;
         float[] vals  = { offsetX, offsetY, offsetZ, scale };
         String[] lbls = { "X", "Y", "Z", "Scale" };
@@ -435,7 +327,7 @@ public class HatPlacementScreen extends Screen
         }
         curY += 4;
 
-        g.drawString(font, "Rotation (deg):", cx, curY, 0xCCCCCC, false);
+        g.text(font, "Rotation (deg):", cx, curY, 0xFFCCCCCC, false);
         curY += 10;
         float[] rvals  = { rotX, rotY, rotZ };
         String[] rlbls = { "rX", "rY", "rZ" };
@@ -445,28 +337,28 @@ public class HatPlacementScreen extends Screen
         }
         curY += 4;
 
-        g.drawString(font, "Preview Hat:", cx, curY, 0xCCCCCC, false);
+        g.text(font, "Preview Hat:", cx, curY, 0xFFCCCCCC, false);
         curY += 10;
         String hLabel = selectedHatIndex < 0 ? "(wireframe)" : hatNames.get(selectedHatIndex);
         drawDropBtn(g, cx, curY, cw, hLabel, hatDropdownOpen == 1, mouseX, mouseY);
     }
 
-    private void drawDropBtn(GuiGraphics g, int x, int y, int w,
+    private void drawDropBtn(GuiGraphicsExtractor g, int x, int y, int w,
                               String label, boolean open, int mx, int my)
     {
         boolean hover = mx >= x && mx < x + w && my >= y && my < y + FIELD_H;
         g.fill(x, y, x + w, y + FIELD_H, 0xFF888888);
         g.fill(x+1, y+1, x+w-1, y+FIELD_H-1, hover ? 0xFF555555 : 0xFF3A3A3A);
         String t = label.length() > 22 ? "..." + label.substring(label.length()-19) : label;
-        g.drawString(font, t, x + 3, y + 3, 0xFFFFFF, false);
-        g.drawString(font, open ? "^" : "v", x + w - 10, y + 3, 0xAAAAAA, false);
+        g.text(font, t, x + 3, y + 3, 0xFFFFFFFF, false);
+        g.text(font, open ? "^" : "v", x + w - 10, y + 3, 0xFFAAAAAA, false);
     }
 
-    private void drawFieldRow(GuiGraphics g, int x, int y, int w,
+    private void drawFieldRow(GuiGraphicsExtractor g, int x, int y, int w,
                                String label, float val, int idx, int mx, int my)
     {
         int lw = 36, fw = w - lw - FIELD_PAD, fx = x + lw;
-        g.drawString(font, label + ":", x, y + 3, 0xAAAAAA, false);
+        g.text(font, label + ":", x, y + 3, 0xFFAAAAAA, false);
         boolean hover   = mx >= fx && mx < fx + fw && my >= y && my < y + FIELD_H;
         boolean drag    = draggingField == idx;
         boolean editing = editingField == idx;
@@ -475,10 +367,10 @@ public class HatPlacementScreen extends Screen
         g.fill(fx+1, y+1, fx+fw-1, y+FIELD_H-1, bg);
         if (editing) {
             String display = editingText + (System.currentTimeMillis() / 500 % 2 == 0 ? "|" : " ");
-            g.drawString(font, display, fx + 3, y + 3, 0xFFFFAA, false);
+            g.text(font, display, fx + 3, y + 3, 0xFFFFFFAA, false);
         } else {
-            g.drawString(font, String.format("%.3f", val), fx + 3, y + 3, 0xFFFFFF, false);
-            if (drag || hover) g.drawString(font, "\u2194", fx + fw - 12, y + 2, 0x88FFFFFF, false);
+            g.text(font, String.format("%.3f", val), fx + 3, y + 3, 0xFFFFFFFF, false);
+            if (drag || hover) g.text(font, "\u2194", fx + fw - 12, y + 2, 0x88FFFFFF, false);
         }
     }
 
@@ -501,7 +393,7 @@ public class HatPlacementScreen extends Screen
 
     private List<String> filteredEntityItems()
     {
-        List<String> all = entityIds.stream().map(ResourceLocation::toString).collect(Collectors.toList());
+        List<String> all = entityIds.stream().map(Identifier::toString).collect(Collectors.toList());
         if (entitySearchText.isEmpty()) return all;
         String q = entitySearchText.toLowerCase(Locale.ROOT);
         return all.stream().filter(s -> s.toLowerCase(Locale.ROOT).contains(q)).collect(Collectors.toList());
@@ -518,7 +410,7 @@ public class HatPlacementScreen extends Screen
     }
 
 
-    private void renderEntityDropdown(GuiGraphics g, int mx, int my)
+    private void renderEntityDropdown(GuiGraphicsExtractor g, int mx, int my)
     {
         int x = panelX() + 4, y = entityDropdownTopY(), w = PANEL_W - 8;
         List<String> items = filteredEntityItems();
@@ -526,7 +418,7 @@ public class HatPlacementScreen extends Screen
             entityIds.isEmpty() ? -1 : entityIds.indexOf(entityIds.get(selectedEntityIndex)));
     }
 
-    private void renderHatDropdown(GuiGraphics g, int mx, int my)
+    private void renderHatDropdown(GuiGraphicsExtractor g, int mx, int my)
     {
         int x = panelX() + 4, y = hatDropdownTopY(), w = PANEL_W - 8;
         List<String> items = filteredHatItems();
@@ -535,7 +427,7 @@ public class HatPlacementScreen extends Screen
         renderDropdown(g, mx, my, x, y, w, items, hatScrollOffset, hatSearchText, selInFiltered);
     }
 
-    private void renderDropdown(GuiGraphics g, int mx, int my,
+    private void renderDropdown(GuiGraphicsExtractor g, int mx, int my,
                                  int x, int y, int w,
                                  List<String> items, int scroll, String searchText, int selected)
     {
@@ -548,7 +440,7 @@ public class HatPlacementScreen extends Screen
         g.fill(x, y, x+w, y + FIELD_H, 0xFF444444);
         g.fill(x+1, y+1, x+w-1, y+FIELD_H-1, 0xFF222222);
         String prompt = searchText.isEmpty() ? "\u00a77Search..." : searchText + (System.currentTimeMillis() / 500 % 2 == 0 ? "|" : "");
-        g.drawString(font, prompt, x + 3, y + 3, searchText.isEmpty() ? 0x888888 : 0xFFFFFF, false);
+        g.text(font, prompt, x + 3, y + 3, searchText.isEmpty() ? 0xFF888888 : 0xFFFFFFFF, false);
 
         int itemsY = y + FIELD_H;
         for (int i = 0; i < rows; i++) {
@@ -561,14 +453,18 @@ public class HatPlacementScreen extends Screen
             else if (hover) g.fill(x, iy, x+w, iy+FIELD_H, 0xFF3A3A3A);
             String lbl = items.get(idx);
             if (lbl.length() > 24) lbl = lbl.substring(0, 21) + "...";
-            g.drawString(font, lbl, x+3, iy+3, sel ? 0xFFFFAA : 0xCCCCCC, false);
+            g.text(font, lbl, x+3, iy+3, sel ? 0xFFFFFFAA : 0xFFCCCCCC, false);
         }
     }
 
 
     @Override
-    public boolean mouseClicked(double mx, double my, int button)
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick)
     {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+
         if (editingField >= 0) {
             commitEdit();
         }
@@ -647,12 +543,16 @@ public class HatPlacementScreen extends Screen
             return true;
         }
 
-        return super.mouseClicked(mx, my, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public boolean mouseReleased(double mx, double my, int button)
+    public boolean mouseReleased(MouseButtonEvent event)
     {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+
         if (potentialEditField >= 0) {
             editingField       = potentialEditField;
             editingText        = String.format("%.3f", getField(editingField));
@@ -663,12 +563,16 @@ public class HatPlacementScreen extends Screen
         draggingField      = -1;
         draggingViewport   = false;
         potentialEditField = -1;
-        return super.mouseReleased(mx, my, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseDragged(double mx, double my, int button, double dx, double dy)
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy)
     {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+
         if (potentialEditField >= 0 && Math.abs(mx - dragStartX) > 3) {
             draggingField      = potentialEditField;
             potentialEditField = -1;
@@ -685,7 +589,7 @@ public class HatPlacementScreen extends Screen
         if (draggingViewport) {
             float ddx = (float)(mx - vpLastX);
             float ddy = (float)(my - vpLastY);
-            if (hasShiftDown()) {
+            if (minecraft.hasShiftDown()) {
                 camOffsetX += ddx;
                 camOffsetY += ddy;
             } else {
@@ -696,7 +600,7 @@ public class HatPlacementScreen extends Screen
             return true;
         }
 
-        return super.mouseDragged(mx, my, button, dx, dy);
+        return super.mouseDragged(event, dx, dy);
     }
 
     @Override
@@ -720,8 +624,10 @@ public class HatPlacementScreen extends Screen
     }
 
     @Override
-    public boolean charTyped(char c, int modifiers)
+    public boolean charTyped(CharacterEvent event)
     {
+        char c = (char) event.codepoint();
+
         if (editingField >= 0) {
             if (c == '-' && editingText.isEmpty()) { editingText = "-"; return true; }
             if ((c >= '0' && c <= '9') || c == '.') {
@@ -742,12 +648,16 @@ public class HatPlacementScreen extends Screen
             return true;
         }
 
-        return super.charTyped(c, modifiers);
+        return super.charTyped(event);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers)
+    public boolean keyPressed(KeyEvent event)
     {
+        int keyCode = event.key();
+        int scanCode = event.scancode();
+        int modifiers = event.modifiers();
+
         final int KEY_BACKSPACE = 259, KEY_ENTER = 257, KEY_KP_ENTER = 335,
                   KEY_ESCAPE = 256, KEY_TAB = 258;
 
@@ -779,7 +689,7 @@ public class HatPlacementScreen extends Screen
                 if (!items.isEmpty()) {
                     String chosen = items.get(Math.min(entityScrollOffset, items.size()-1));
                     selectedEntityIndex = entityIds.stream()
-                        .map(ResourceLocation::toString).collect(Collectors.toList()).indexOf(chosen);
+                        .map(Identifier::toString).collect(Collectors.toList()).indexOf(chosen);
                     closeDropdowns();
                     spawnPreviewEntity();
                     loadPlacementForSelected();
@@ -811,7 +721,7 @@ public class HatPlacementScreen extends Screen
         }
 
         if (keyCode == KEY_ESCAPE) { onClose(); return true; }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
 
@@ -922,13 +832,13 @@ public class HatPlacementScreen extends Screen
     }
 
     @Override
-    protected void renderBlurredBackground(float partialTick)
+    protected void extractBlurredBackground(GuiGraphicsExtractor graphics)
     {
         // disable 1.21+ menu-blur effect over the world
     }
 
     @Override
-    protected void renderMenuBackground(GuiGraphics g)
+    protected void extractMenuBackground(GuiGraphicsExtractor g)
     {
         // skip the in-world dark dirt-pattern overlay
     }

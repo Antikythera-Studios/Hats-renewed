@@ -2,7 +2,6 @@ package me.guivnf.mods.hats.common.hat;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,26 +63,24 @@ public class HatPart
 
     public static HatPart load(CompoundTag tag)
     {
-        HatPart part = new HatPart(tag.getString("name"));
-        if (tag.contains("registryKey")) part.registryKey = tag.getString("registryKey");
-        part.count = tag.getInt("count");
-        part.isFavourite = tag.getBoolean("favourite");
-        part.isNew = tag.getBoolean("new");
-        part.isShowing = tag.getBoolean("showing");
-        part.enchanted = tag.getBoolean("enchanted");
-        part.colour[0] = tag.getFloat("colR");
-        part.colour[1] = tag.getFloat("colG");
-        part.colour[2] = tag.getFloat("colB");
-        part.colour[3] = tag.getFloat("colA");
-        part.hsb[0] = tag.getFloat("hsbH");
-        part.hsb[1] = tag.getFloat("hsbS");
-        part.hsb[2] = tag.getFloat("hsbB");
+        HatPart part = new HatPart(tag.getStringOr("name", ""));
+        if (tag.contains("registryKey")) part.registryKey = tag.getStringOr("registryKey", null);
+        part.count = tag.getIntOr("count", 0);
+        part.isFavourite = tag.getBooleanOr("favourite", false);
+        part.isNew = tag.getBooleanOr("new", false);
+        part.isShowing = tag.getBooleanOr("showing", false);
+        part.enchanted = tag.getBooleanOr("enchanted", false);
+        part.colour[0] = tag.getFloatOr("colR", 0f);
+        part.colour[1] = tag.getFloatOr("colG", 0f);
+        part.colour[2] = tag.getFloatOr("colB", 0f);
+        part.colour[3] = tag.getFloatOr("colA", 0f);
+        part.hsb[0] = tag.getFloatOr("hsbH", 0f);
+        part.hsb[1] = tag.getFloatOr("hsbS", 0f);
+        part.hsb[2] = tag.getFloatOr("hsbB", 0f);
 
-        if (tag.contains("accessories", Tag.TAG_LIST)) {
-            ListTag list = tag.getList("accessories", Tag.TAG_COMPOUND);
-            for (int i = 0; i < list.size(); i++) {
-                part.accessories.add(load(list.getCompound(i)));
-            }
+        ListTag list = tag.getListOrEmpty("accessories");
+        for (int i = 0; i < list.size(); i++) {
+            part.accessories.add(load(list.getCompoundOrEmpty(i)));
         }
 
         return part;

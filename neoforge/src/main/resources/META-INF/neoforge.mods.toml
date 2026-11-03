@@ -20,14 +20,14 @@ license = "LGPL"
 [[dependencies.hats]]
     modId = "minecraft"
     type = "required"
-    versionRange = "[1.21.1,1.22)"
+    versionRange = "[26.1.2,27)"
     ordering = "NONE"
     side = "BOTH"
 
 [[dependencies.hats]]
     modId = "architectury"
     type = "required"
-    versionRange = "[13,)"
+    versionRange = "[20,)"
     ordering = "NONE"
     side = "BOTH"
 

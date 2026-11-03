@@ -25,7 +25,7 @@ public class PacketLaunchHat
         String hatName = buf.readUtf();
         context.queue(() -> {
             ServerPlayer sp = (ServerPlayer) context.getPlayer();
-            HatsSavedData data = HatsSavedData.get(sp.serverLevel());
+            HatsSavedData data = HatsSavedData.get(sp.level());
 
             HatPart hat;
             if (hatName.isEmpty()) {
@@ -36,17 +36,17 @@ public class PacketLaunchHat
 
             if (hat == null) return;
 
-            HatEntity projectile = HatEntity.launch(sp.serverLevel(), sp, hat);
-            sp.serverLevel().addFreshEntity(projectile);
+            HatEntity projectile = HatEntity.launch(sp.level(), sp, hat);
+            sp.level().addFreshEntity(projectile);
 
             if (HatsRegistries.BONK.isPresent()) {
-                sp.serverLevel().playSound(null, sp.blockPosition(),
+                sp.level().playSound(null, sp.blockPosition(),
                     HatsRegistries.BONK.get(), SoundSource.PLAYERS,
-                    0.8f, 0.9f + sp.serverLevel().random.nextFloat() * 0.2f);
+                    0.8f, 0.9f + sp.level().getRandom().nextFloat() * 0.2f);
             }
 
             NetworkHelper.syncInventory(sp, data);
-            sp.getCooldowns().addCooldown(HatsRegistries.HAT_LAUNCHER.get(), 10);
+            sp.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(HatsRegistries.HAT_LAUNCHER.get()), 10);
         });
     }
 }

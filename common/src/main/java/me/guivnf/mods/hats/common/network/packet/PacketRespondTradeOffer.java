@@ -50,7 +50,7 @@ public class PacketRespondTradeOffer
                 return;
             }
 
-            ServerPlayer sender = responder.getServer().getPlayerList().getPlayer(offer.senderUuid);
+            ServerPlayer sender = responder.level().getServer().getPlayerList().getPlayer(offer.senderUuid);
 
             if (!accepted) {
                 TradeOfferStore.get().remove(offerId);
@@ -79,7 +79,7 @@ public class PacketRespondTradeOffer
                 return;
             }
 
-            HatsSavedData data = HatsSavedData.get(sender.serverLevel());
+            HatsSavedData data = HatsSavedData.get(sender.level());
             PlayerHatData senderData   = data.getOrCreatePlayer(sender.getUUID());
             PlayerHatData receiverData = data.getOrCreatePlayer(responder.getUUID());
 

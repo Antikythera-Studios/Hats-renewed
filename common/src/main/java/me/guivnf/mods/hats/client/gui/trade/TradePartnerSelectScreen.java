@@ -6,9 +6,10 @@ import me.guivnf.mods.hats.client.trade.ClientTradeFlow;
 import me.guivnf.mods.hats.client.trade.ClientTradeState;
 import me.guivnf.mods.hats.common.network.HatsNetwork;
 import me.guivnf.mods.hats.common.network.packet.PacketRequestNearbyPlayers;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -82,16 +83,15 @@ public class TradePartnerSelectScreen
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick)
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick)
     {
-        renderBackground(g, mouseX, mouseY, partialTick);
 
         g.fill(x - 1, y - 1, x + W + 1, y + H + 1, 0xFF555555);
         g.fill(x,     y,     x + W,     y + H,     0xFFC6C6C6);
         g.fill(x + 1, y + 1, x + W - 1, y + 2,     0xFFFFFFFF);
         g.fill(x + 1, y + H - 2, x + W - 1, y + H - 1, 0xFF555555);
 
-        g.drawString(font, title, x + (W - font.width(title)) / 2, y + 8, 0xFF333333, false);
+        g.text(font, title, x + (W - font.width(title)) / 2, y + 8, 0xFF333333, false);
 
         if (ClientTradeState.hasIncomingOffers()) {
             renderIncomingHeader(g, mouseX, mouseY);
@@ -99,18 +99,18 @@ public class TradePartnerSelectScreen
 
         if (!ClientTradeState.isNearbyReceived()) {
             renderLoading(g);
-            super.render(g, mouseX, mouseY, partialTick);
+            super.extractRenderState(g, mouseX, mouseY, partialTick);
             return;
         }
 
         renderList(g, mouseX, mouseY);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
     }
 
     private int incomingHeaderY() { return listY - 14; }
 
-    private void renderIncomingHeader(GuiGraphics g, int mouseX, int mouseY)
+    private void renderIncomingHeader(GuiGraphicsExtractor g, int mouseX, int mouseY)
     {
         int n = ClientTradeState.getIncomingOffers().size();
         String txt = n + " incoming — click";
@@ -118,19 +118,19 @@ public class TradePartnerSelectScreen
         boolean hover = mouseX >= listX && mouseX < listX + listW && mouseY >= hy && mouseY < hy + 12;
         g.fill(listX, hy, listX + listW, hy + 12, hover ? 0xFFFFC04D : 0xFFFFAA00);
         int tw = font.width(txt);
-        g.drawString(font, txt, listX + (listW - tw) / 2, hy + 2, 0xFF222222, false);
+        g.text(font, txt, listX + (listW - tw) / 2, hy + 2, 0xFF222222, false);
     }
 
-    private void renderLoading(GuiGraphics g)
+    private void renderLoading(GuiGraphicsExtractor g)
     {
         int dots = (int)((System.currentTimeMillis() / 400) % 4);
         StringBuilder s = new StringBuilder("Fetching nearby players");
         for (int i = 0; i < dots; i++) s.append('.');
         int tw = font.width(s.toString());
-        g.drawString(font, s.toString(), x + (W - tw) / 2, y + H / 2 - 4, 0xFF333333, false);
+        g.text(font, s.toString(), x + (W - tw) / 2, y + H / 2 - 4, 0xFF333333, false);
     }
 
-    private void renderList(GuiGraphics g, int mouseX, int mouseY)
+    private void renderList(GuiGraphicsExtractor g, int mouseX, int mouseY)
     {
         List<me.guivnf.mods.hats.common.network.packet.PacketNearbyPlayersList.Entry> nearby =
             ClientTradeState.getNearby();
@@ -141,7 +141,7 @@ public class TradePartnerSelectScreen
         if (nearby.isEmpty()) {
             String s = "No players within range.";
             int tw = font.width(s);
-            g.drawString(font, s, x + (W - tw) / 2, listY + listH / 2 - 4, 0xFFAAAAAA, false);
+            g.text(font, s, x + (W - tw) / 2, listY + listH / 2 - 4, 0xFFAAAAAA, false);
             return;
         }
 
@@ -152,7 +152,7 @@ public class TradePartnerSelectScreen
             boolean hover = mouseX >= listX && mouseX < listX + listW
                          && mouseY >= ry   && mouseY < ry + ROW_H;
             if (hover) g.fill(listX, ry, listX + listW, ry + ROW_H, 0xFF3D5A80);
-            g.drawString(font, nearby.get(idx).name(), listX + 6, ry + 4, 0xFFFFFFFF, false);
+            g.text(font, nearby.get(idx).name(), listX + 6, ry + 4, 0xFFFFFFFF, false);
         }
 
         if (nearby.size() > LIST_VISIBLE_ROWS) {
@@ -166,8 +166,12 @@ public class TradePartnerSelectScreen
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button)
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick)
     {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+
         if (button == 0 && ClientTradeState.hasIncomingOffers()) {
             int hy = incomingHeaderY();
             if (mouseX >= listX && mouseX < listX + listW && mouseY >= hy && mouseY < hy + 12) {
@@ -191,7 +195,7 @@ public class TradePartnerSelectScreen
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -207,13 +211,13 @@ public class TradePartnerSelectScreen
     }
 
     @Override
-    protected void renderBlurredBackground(float partialTick)
+    protected void extractBlurredBackground(GuiGraphicsExtractor graphics)
     {
         // disable 1.21+ menu-blur effect over the world
     }
 
     @Override
-    protected void renderMenuBackground(GuiGraphics g)
+    protected void extractMenuBackground(GuiGraphicsExtractor g)
     {
         // skip the in-world dark dirt-pattern overlay
     }

@@ -1,12 +1,12 @@
 package me.guivnf.mods.hats.fabric;
 
 import me.guivnf.mods.hats.HatsMod;
-import me.guivnf.mods.hats.common.registry.HatsRegistries;
+import me.guivnf.mods.hats.client.gui.HatModelPipRenderer;
+import me.guivnf.mods.hats.client.gui.PlacementViewportRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.renderer.item.ItemProperties;
-import net.minecraft.resources.ResourceLocation;
+import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry;
 
 @Environment(EnvType.CLIENT)
 public class HatsFabricClient
@@ -16,17 +16,9 @@ public class HatsFabricClient
     public void onInitializeClient()
     {
         HatsMod.clientInit();
-        ItemProperties.register(
-            HatsRegistries.HAT_LAUNCHER.get(),
-            ResourceLocation.fromNamespaceAndPath(HatsMod.MOD_ID, "offhand"),
-            (stack, level, entity, seed) -> {
-                if (entity == null) return 0.0f;
-                net.minecraft.world.item.ItemStack offhand = entity.getOffhandItem();
-                if (offhand == stack) return 1.0f;
-                net.minecraft.world.item.ItemStack mainhand = entity.getMainHandItem();
-                if (mainhand != stack && offhand.getItem() == stack.getItem()
-                        && net.minecraft.world.item.ItemStack.isSameItemSameComponents(offhand, stack)) return 1.0f;
-                return 0.0f;
-            });
+        PictureInPictureRendererRegistry.register(context ->
+            new HatModelPipRenderer(context.minecraft().renderBuffers().bufferSource()));
+        PictureInPictureRendererRegistry.register(context ->
+            new PlacementViewportRenderer(context.minecraft().renderBuffers().bufferSource()));
     }
 }

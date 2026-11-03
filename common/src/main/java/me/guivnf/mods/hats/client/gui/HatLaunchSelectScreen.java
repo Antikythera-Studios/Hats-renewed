@@ -5,7 +5,7 @@ import me.guivnf.mods.hats.common.hat.HatDefinition;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.common.hat.HatRegistry;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -122,17 +122,16 @@ public class HatLaunchSelectScreen extends Screen
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partial)
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial)
     {
-        renderBackground(g, mouseX, mouseY, partial);
 
         int panelW  = BTN_W + PAD * 2;
         int startX  = (width  - panelW) / 2;
         int startY  = (height - panelH()) / 2;
 
         g.fill(startX, startY, startX + panelW, startY + panelH(), 0xCC000000);
-        g.renderOutline(startX, startY, panelW, panelH(), 0xFF888888);
-        g.drawCenteredString(font, title, width / 2, startY + PAD, 0xFFFFFF);
+        g.outline(startX, startY, panelW, panelH(), 0xFF888888);
+        g.centeredText(font, title, width / 2, startY + PAD, 0xFFFFFFFF);
 
         if (launchable.size() > MAX_VISIBLE_HAT_ROWS) {
             int scrollBarX = startX + panelW - 3;
@@ -146,17 +145,17 @@ public class HatLaunchSelectScreen extends Screen
             g.fill(scrollBarX, thumbY,  scrollBarX + 2, thumbY + thumbH, 0xFFAAAAAA);
         }
 
-        super.render(g, mouseX, mouseY, partial);
+        super.extractRenderState(g, mouseX, mouseY, partial);
     }
 
     @Override
-    protected void renderBlurredBackground(float partialTick)
+    protected void extractBlurredBackground(GuiGraphicsExtractor graphics)
     {
         // disable 1.21+ menu-blur effect over the world
     }
 
     @Override
-    protected void renderMenuBackground(GuiGraphics g)
+    protected void extractMenuBackground(GuiGraphicsExtractor g)
     {
         // skip the in-world dark dirt-pattern overlay
     }

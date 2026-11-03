@@ -2,7 +2,7 @@ package me.guivnf.mods.hats.common.hat.placement;
 
 import com.google.gson.*;
 import me.guivnf.mods.hats.HatsMod;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.io.*;
 import java.nio.file.*;
@@ -17,7 +17,7 @@ public class HatPlacementJsonLoader
         return HatsMod.configDirectory.resolve("hat_placement");
     }
 
-    private static Path fileFor(ResourceLocation id)
+    private static Path fileFor(Identifier id)
     {
         return getPlacementDir().resolve(id.getNamespace()).resolve(id.getPath() + ".json");
     }
@@ -44,7 +44,7 @@ public class HatPlacementJsonLoader
         }
     }
 
-    public static void saveOne(ResourceLocation id, HatPlacementInfo info)
+    public static void saveOne(Identifier id, HatPlacementInfo info)
     {
         Path file = fileFor(id);
         try {
@@ -59,7 +59,7 @@ public class HatPlacementJsonLoader
 
     public static void exportAll()
     {
-        for (Map.Entry<ResourceLocation, HatPlacementInfo> e : HatPlacementRegistry.getOverrideEntries()) {
+        for (Map.Entry<Identifier, HatPlacementInfo> e : HatPlacementRegistry.getOverrideEntries()) {
             saveOne(e.getKey(), e.getValue());
         }
         HatsMod.LOGGER.info("[Hats] Exported placement overrides to {}", getPlacementDir());
@@ -103,7 +103,7 @@ public class HatPlacementJsonLoader
                 if (rel.getNameCount() != 2) return;
                 String ns   = rel.getName(0).toString();
                 String path = rel.getName(1).toString().replace(".json", "");
-                ResourceLocation id = ResourceLocation.tryParse(ns + ":" + path);
+                Identifier id = Identifier.tryParse(ns + ":" + path);
                 if (id == null) return;
                 loadFile(p, id, source);
             });
@@ -112,7 +112,7 @@ public class HatPlacementJsonLoader
         }
     }
 
-    private static void loadFile(Path file, ResourceLocation id, String source)
+    private static void loadFile(Path file, Identifier id, String source)
     {
         try (Reader r = Files.newBufferedReader(file)) {
             JsonObject obj = GSON.fromJson(r, JsonObject.class);
@@ -136,7 +136,7 @@ public class HatPlacementJsonLoader
                 if (root != null) {
                     for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                         if (!e.getValue().isJsonObject()) continue;
-                        ResourceLocation id = ResourceLocation.tryParse(e.getKey());
+                        Identifier id = Identifier.tryParse(e.getKey());
                         if (id == null) continue;
                         HatPlacementInfo info = fromJson(e.getValue().getAsJsonObject());
                         HatPlacementRegistry.registerOverride(id, info);

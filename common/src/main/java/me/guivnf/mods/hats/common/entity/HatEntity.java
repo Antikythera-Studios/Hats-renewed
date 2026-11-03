@@ -6,8 +6,11 @@ import me.guivnf.mods.hats.common.hat.placement.HatPlacementRegistry;
 import me.guivnf.mods.hats.common.network.NetworkHelper;
 import me.guivnf.mods.hats.common.registry.HatsRegistries;
 import me.guivnf.mods.hats.common.world.HatsSavedData;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -16,12 +19,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -32,8 +38,8 @@ import java.util.UUID;
 public class HatEntity
         extends Entity
 {
-    private static final EntityDataAccessor<CompoundTag> HAT_DATA =
-            SynchedEntityData.defineId(HatEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private static final EntityDataAccessor<String> HAT_DATA =
+            SynchedEntityData.defineId(HatEntity.class, EntityDataSerializers.STRING);
 
     @Nullable
     private HatPart hatPart;
@@ -64,7 +70,7 @@ public class HatEntity
     {
         HatEntity entity = new HatEntity(HatsRegistries.HAT_ENTITY.get(), level);
         entity.hatPart   = hat.copy();
-        entity.entityData.set(HAT_DATA, hat.save());
+        entity.entityData.set(HAT_DATA, hat.save().toString());
         entity.launcherId    = shooter.getUUID();
         entity.leftLauncher  = false;
 
@@ -80,7 +86,7 @@ public class HatEntity
     @Override
     protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder)
     {
-        builder.define(HAT_DATA, new CompoundTag());
+        builder.define(HAT_DATA, "");
     }
 
     @Override
@@ -92,7 +98,7 @@ public class HatEntity
         super.tick();
         age++;
 
-        if (!level().isClientSide) {
+        if (!level().isClientSide()) {
             int lifespan = HatsMod.getConfig().hatEntityLifespan;
             if (age >= lifespan) {
                 discard();
@@ -102,7 +108,7 @@ public class HatEntity
 
         Vec3 motion = getDeltaMovement();
 
-        if (!level().isClientSide && hatPart != null) {
+        if (!level().isClientSide() && hatPart != null) {
             if (!leftLauncher && launcherId != null) {
                 Entity launcher = null;
                 for (Entity e : level().getEntities(this, getBoundingBox().inflate(1.5), e -> e instanceof LivingEntity)) {
@@ -133,7 +139,7 @@ public class HatEntity
         move(MoverType.SELF, motion);
 
         if ((horizontalCollision && !wasHorizontalCollision) || (onGround() && !wasOnGround)) {
-            if (!level().isClientSide) {
+            if (!level().isClientSide()) {
                 isRogue = false;
                 leftLauncher = true;
             } else {
@@ -235,7 +241,7 @@ public class HatEntity
     public void onSyncedDataUpdated(EntityDataAccessor<?> key)
     {
         super.onSyncedDataUpdated(key);
-        if (HAT_DATA.equals(key) && level().isClientSide) {
+        if (HAT_DATA.equals(key) && level().isClientSide()) {
             hatPart = null;
         }
     }
@@ -244,9 +250,13 @@ public class HatEntity
     public HatPart getHatPart()
     {
         if (hatPart == null) {
-            CompoundTag tag = entityData.get(HAT_DATA);
-            if (!tag.isEmpty()) {
-                hatPart = HatPart.load(tag);
+            String snbt = entityData.get(HAT_DATA);
+            if (!snbt.isEmpty()) {
+                try {
+                    hatPart = HatPart.load(TagParser.parseCompoundFully(snbt));
+                } catch (CommandSyntaxException e) {
+                    HatsMod.LOGGER.warn("Failed to read synced hat data: {}", e.getMessage());
+                }
             }
         }
         return hatPart;
@@ -255,13 +265,13 @@ public class HatEntity
     public void setHatPart(HatPart part)
     {
         hatPart = part;
-        entityData.set(HAT_DATA, part.save());
+        entityData.set(HAT_DATA, part.save().toString());
     }
 
     @Override
-    public InteractionResult interact(Player player, InteractionHand hand)
+    public InteractionResult interact(Player player, InteractionHand hand, Vec3 location)
     {
-        if (level().isClientSide) return InteractionResult.SUCCESS;
+        if (level().isClientSide()) return InteractionResult.SUCCESS;
 
         HatPart hat = getHatPart();
         if (hat == null) {
@@ -279,27 +289,30 @@ public class HatEntity
     }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag)
+    protected void readAdditionalSaveData(ValueInput input)
     {
-        if (tag.contains("hatPart")) {
-            hatPart = HatPart.load(tag.getCompound("hatPart"));
-            entityData.set(HAT_DATA, tag.getCompound("hatPart"));
-        }
-        if (tag.hasUUID("launcherId"))  launcherId   = tag.getUUID("launcherId");
-        leftLauncher = tag.getBoolean("leftLauncher");
-        isRogue      = tag.getBoolean("isRogue");
-        age          = tag.getInt("age");
+        input.read("hatPart", CompoundTag.CODEC).ifPresent(tag -> setHatPart(HatPart.load(tag)));
+        launcherId   = input.read("launcherId", UUIDUtil.CODEC).orElse(null);
+        leftLauncher = input.getBooleanOr("leftLauncher", false);
+        isRogue      = input.getBooleanOr("isRogue", false);
+        age          = input.getIntOr("age", 0);
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag)
+    protected void addAdditionalSaveData(ValueOutput output)
     {
         HatPart hat = getHatPart();
-        if (hat != null) tag.put("hatPart", hat.save());
-        if (launcherId != null) tag.putUUID("launcherId", launcherId);
-        tag.putBoolean("leftLauncher", leftLauncher);
-        tag.putBoolean("isRogue", isRogue);
-        tag.putInt("age", age);
+        if (hat != null) output.store("hatPart", CompoundTag.CODEC, hat.save());
+        output.storeNullable("launcherId", UUIDUtil.CODEC, launcherId);
+        output.putBoolean("leftLauncher", leftLauncher);
+        output.putBoolean("isRogue", isRogue);
+        output.putInt("age", age);
+    }
+
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount)
+    {
+        return false;
     }
 
     @Override

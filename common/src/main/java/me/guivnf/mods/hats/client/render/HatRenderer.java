@@ -8,8 +8,10 @@ import me.guivnf.mods.hats.common.hat.HatModelData;
 import me.guivnf.mods.hats.common.hat.HatPart;
 import me.guivnf.mods.hats.common.hat.HatRegistry;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -21,7 +23,23 @@ public class HatRenderer
 
     public static void setForceNoCull(boolean value) { forceNoCull = value; }
 
+    public static void render(PoseStack poseStack, SubmitNodeCollector collector, int light, int overlay,
+            HatPart part, float offsetX, float offsetY, float offsetZ,
+            float rotX, float rotY, float rotZ, float scale)
+    {
+        render(poseStack, HatGeometrySink.of(collector), light, overlay, part,
+            offsetX, offsetY, offsetZ, rotX, rotY, rotZ, scale);
+    }
+
     public static void render(PoseStack poseStack, MultiBufferSource buffers, int light, int overlay,
+            HatPart part, float offsetX, float offsetY, float offsetZ,
+            float rotX, float rotY, float rotZ, float scale)
+    {
+        render(poseStack, HatGeometrySink.of(buffers), light, overlay, part,
+            offsetX, offsetY, offsetZ, rotX, rotY, rotZ, scale);
+    }
+
+    public static void render(PoseStack poseStack, HatGeometrySink buffers, int light, int overlay,
             HatPart part, float offsetX, float offsetY, float offsetZ,
             float rotX, float rotY, float rotZ, float scale)
     {
@@ -50,7 +68,7 @@ public class HatRenderer
             }
         }
 
-        ResourceLocation baseTexture = HatTextureManager.getTexture(def, part);
+        Identifier baseTexture = HatTextureManager.getTexture(def, part);
         if (baseTexture != null) {
             HatModelData model = def.modelData;
             boolean cull = def.meta.cull != null
@@ -59,38 +77,25 @@ public class HatRenderer
             if (forceNoCull) cull = false;
             boolean noCull = !cull;
 
-            if (boneTexOverrides.isEmpty() && boneColorOverrides.isEmpty()) {
-                RenderType renderType = part.enchanted
-                    ? RenderType.entityGlint()
-                    : (noCull ? HatRenderTypes.hatTranslucent(baseTexture) : HatRenderTypes.hatTranslucentCull(baseTexture));
-                VertexConsumer consumer = buffers.getBuffer(renderType);
-                for (HatModelData.Bone root : model.roots) {
-                    renderBone(root, model.format, poseStack, buffers, consumer,
-                        baseTexture, part, light, overlay, rgba,
-                        model.textureWidth, model.textureHeight, hiddenParts,
-                        boneTexOverrides, boneColorOverrides, noCull);
-                }
-            } else {
-                for (HatModelData.Bone root : model.roots) {
-                    renderBone(root, model.format, poseStack, buffers, null,
-                        baseTexture, part, light, overlay, rgba,
-                        model.textureWidth, model.textureHeight, hiddenParts,
-                        boneTexOverrides, boneColorOverrides, noCull);
-                }
+            for (HatModelData.Bone root : model.roots) {
+                renderBone(root, model.format, poseStack, buffers,
+                    baseTexture, part, light, overlay, rgba,
+                    model.textureWidth, model.textureHeight, hiddenParts,
+                    boneTexOverrides, boneColorOverrides, noCull);
             }
         }
 
         for (HatPart accessory : part.accessories) {
             if (!accessory.isShowing) continue;
-            render(poseStack, buffers, light, overlay, accessory, 0, 0, 0, 0, 0, 0, 1f);
+            render(poseStack, buffers.above(), light, overlay, accessory, 0, 0, 0, 0, 0, 0, 1f);
         }
 
         poseStack.popPose();
     }
 
     private static void renderBone(HatModelData.Bone bone, HatModelData.Format format,
-            PoseStack poseStack, MultiBufferSource buffers, VertexConsumer sharedConsumer,
-            ResourceLocation baseTexture, HatPart part,
+            PoseStack poseStack, HatGeometrySink buffers,
+            Identifier baseTexture, HatPart part,
             int light, int overlay, float[] rgba,
             int texW, int texH, Set<String> hiddenParts,
             Map<String, String> boneTexOverrides, Map<String, float[]> boneColorOverrides,
@@ -137,41 +142,38 @@ public class HatRenderer
                 };
             }
 
-            VertexConsumer consumer = sharedConsumer;
+            RenderType renderType = null;
             int boneTexW = (bone.texW > 0) ? bone.texW : texW;
             int boneTexH = (bone.texH > 0) ? bone.texH : texH;
 
             String texOverrideName = boneTexOverrides.get(bone.name);
             if (texOverrideName != null) {
                 HatDefinition overrideDef = HatRegistry.get(texOverrideName);
-                ResourceLocation overrideTex = overrideDef != null
+                Identifier overrideTex = overrideDef != null
                     ? HatTextureManager.getTexture(overrideDef, part)
                     : null;
                 if (overrideTex != null) {
-                    RenderType rt = part.enchanted
-                        ? RenderType.entityGlint()
-                        : (noCull ? HatRenderTypes.hatTranslucent(overrideTex) : HatRenderTypes.hatTranslucentCull(overrideTex));
-                    consumer = buffers.getBuffer(rt);
+                    renderType = renderTypeFor(part, overrideTex, noCull);
                     boneTexW = overrideDef.modelData.textureWidth;
                     boneTexH = overrideDef.modelData.textureHeight;
                 }
             }
 
-            if (consumer == null) {
-                RenderType rt = part.enchanted
-                    ? RenderType.entityGlint()
-                    : (noCull ? HatRenderTypes.hatTranslucent(baseTexture) : HatRenderTypes.hatTranslucentCull(baseTexture));
-                consumer = buffers.getBuffer(rt);
-            }
+            if (renderType == null) renderType = renderTypeFor(part, baseTexture, noCull);
 
-            for (HatModelData.Cube cube : bone.cubes) {
-                renderCube(cube, format, poseStack, consumer, light, overlay, boneRgba,
-                    bone.mirror || cube.mirror, boneTexW, boneTexH);
-            }
+            float[] cubeRgba = boneRgba;
+            int cubeTexW = boneTexW;
+            int cubeTexH = boneTexH;
+            buffers.accept(poseStack, renderType, (pose, consumer) -> {
+                for (HatModelData.Cube cube : bone.cubes) {
+                    renderCube(cube, format, pose, consumer, light, overlay, cubeRgba,
+                        bone.mirror || cube.mirror, cubeTexW, cubeTexH);
+                }
+            });
         }
 
         for (HatModelData.Bone child : bone.children) {
-            renderBone(child, format, poseStack, buffers, sharedConsumer,
+            renderBone(child, format, poseStack, buffers,
                 baseTexture, part, light, overlay, rgba,
                 texW, texH, hiddenParts,
                 boneTexOverrides, boneColorOverrides, noCull);
@@ -181,7 +183,7 @@ public class HatRenderer
     }
 
     private static void renderCube(HatModelData.Cube cube, HatModelData.Format format,
-            PoseStack poseStack, VertexConsumer consumer, int light, int overlay,
+            PoseStack.Pose pose, VertexConsumer consumer, int light, int overlay,
             float[] rgba, boolean mirror, int texW, int texH)
     {
         float ox = cube.originX / 16f;
@@ -213,11 +215,17 @@ public class HatRenderer
         // Swap Y face UV so the correct region shows from above.
         boolean swapYFaceUV = (format == HatModelData.Format.GEO_JSON) && flatY;
 
-        CubeRenderer.renderCube(poseStack, consumer, ox, oy, oz, sx, sy, sz,
+        CubeRenderer.renderCube(pose, consumer, ox, oy, oz, sx, sy, sz,
             inflateX, inflateY, inflateZ,
             cube.texU, cube.texV, cube.sizeX, cube.sizeY, cube.sizeZ,
             texW, texH,
             light, overlay, rgba[0], rgba[1], rgba[2], rgba[3], mirror, flatX, flatY, flatZ, swapYFaceUV);
+    }
+
+    private static RenderType renderTypeFor(HatPart part, Identifier texture, boolean noCull)
+    {
+        if (part.enchanted) return RenderTypes.entityGlint();
+        return noCull ? HatRenderTypes.hatTranslucent(texture) : HatRenderTypes.hatTranslucentCull(texture);
     }
 
     private static float[] resolveColour(HatPart part)

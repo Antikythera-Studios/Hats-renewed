@@ -48,7 +48,7 @@ public class PacketSendTradeOffer
 
         context.queue(() -> {
             ServerPlayer sender = (ServerPlayer) context.getPlayer();
-            ServerPlayer receiver = sender.getServer().getPlayerList().getPlayer(receiverUuid);
+            ServerPlayer receiver = sender.level().getServer().getPlayerList().getPlayer(receiverUuid);
 
             if (receiver == null || receiver.level() != sender.level()) {
                 NetworkManager.sendToPlayer(sender, HatsNetwork.TRADE_ERROR,
@@ -68,7 +68,7 @@ public class PacketSendTradeOffer
                 return;
             }
 
-            HatsSavedData data = HatsSavedData.get(sender.serverLevel());
+            HatsSavedData data = HatsSavedData.get(sender.level());
             PlayerHatData senderData   = data.getOrCreatePlayer(sender.getUUID());
             PlayerHatData receiverData = data.getOrCreatePlayer(receiverUuid);
 
@@ -101,8 +101,8 @@ public class PacketSendTradeOffer
 
             UUID offerId = UUID.randomUUID();
             TradeOffer offer = new TradeOffer(offerId,
-                sender.getUUID(), sender.getGameProfile().getName(),
-                receiverUuid, receiver.getGameProfile().getName(),
+                sender.getUUID(), sender.getGameProfile().name(),
+                receiverUuid, receiver.getGameProfile().name(),
                 senderHats, receiverHats,
                 System.currentTimeMillis());
 

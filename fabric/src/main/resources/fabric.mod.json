@@ -17,9 +17,9 @@
     "hats.compat.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.15",
+    "fabricloader": ">=0.19.3",
     "fabric-api": "*",
-    "architectury": ">=13",
-    "minecraft": "~1.21.1"
+    "architectury": ">=20",
+    "minecraft": "~26.1.2"
   }
 }

@@ -11,7 +11,7 @@ import me.guivnf.mods.hats.common.network.packet.PacketRespondTradeOffer;
 import me.guivnf.mods.hats.common.trade.TradeOffer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -79,9 +79,8 @@ public class TradeIncomingScreen
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick)
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick)
     {
-        renderBackground(g, mouseX, mouseY, partialTick);
 
         g.fill(x - 1, y - 1, x + W + 1, y + H + 1, 0xFF555555);
         g.fill(x,     y,     x + W,     y + H,     0xFFC6C6C6);
@@ -89,12 +88,12 @@ public class TradeIncomingScreen
 
         Component header = Component.literal("Offer from ")
             .append(Component.literal(offer.senderName).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
-        g.drawString(font, header, x + (W - font.width(header)) / 2, y + 6, 0xFF222222, false);
+        g.text(font, header, x + (W - font.width(header)) / 2, y + 6, 0xFF222222, false);
 
         long remaining = Math.max(0L, TradeOffer.EXPIRY_MS - (System.currentTimeMillis() - offer.createdAtClientMs));
         long secs = remaining / 1000L;
         String expires = "Expires in " + (secs / 60) + ":" + String.format("%02d", secs % 60);
-        g.drawString(font, expires, x + (W - font.width(expires)) / 2, y + 18, 0xFF555555, false);
+        g.text(font, expires, x + (W - font.width(expires)) / 2, y + 18, 0xFF555555, false);
 
         int colW = (W - 18) / 2;
         int leftX  = x + 6;
@@ -110,19 +109,19 @@ public class TradeIncomingScreen
 
         if (offer.receiverHats.isEmpty()) {
             String note = "Gift — they ask nothing in return";
-            g.drawString(font, note, x + (W - font.width(note)) / 2, y + H - 36, 0xFF227722, false);
+            g.text(font, note, x + (W - font.width(note)) / 2, y + H - 36, 0xFF227722, false);
         } else if (offer.senderHats.isEmpty()) {
             String note = "They want a gift from you";
-            g.drawString(font, note, x + (W - font.width(note)) / 2, y + H - 36, 0xFF884400, false);
+            g.text(font, note, x + (W - font.width(note)) / 2, y + H - 36, 0xFF884400, false);
         }
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
     }
 
-    private void renderColumn(GuiGraphics g, int cx, int cy, int cw, String header,
+    private void renderColumn(GuiGraphicsExtractor g, int cx, int cy, int cw, String header,
                               List<HatPart> hats, int scroll, Player player)
     {
-        g.drawString(font, header, cx, cy, 0xFF222222, false);
+        g.text(font, header, cx, cy, 0xFF222222, false);
         int rowsY = cy + 11;
         int rowsH = colH - 11;
 
@@ -131,7 +130,7 @@ public class TradeIncomingScreen
 
         if (hats.isEmpty()) {
             String s = "(nothing)";
-            g.drawString(font, s, cx + (cw - font.width(s)) / 2, rowsY + rowsH / 2 - 4, 0xFF777777, false);
+            g.text(font, s, cx + (cw - font.width(s)) / 2, rowsY + rowsH / 2 - 4, 0xFF777777, false);
             return;
         }
 
@@ -167,7 +166,7 @@ public class TradeIncomingScreen
         }
     }
 
-    private void renderHatCell(GuiGraphics g, HatPart hat, int cx, int cy, Player player)
+    private void renderHatCell(GuiGraphicsExtractor g, HatPart hat, int cx, int cy, Player player)
     {
         g.fill(cx, cy, cx + CELL_W, cy + CELL_H, 0xFF404040);
         g.fill(cx, cy, cx + CELL_W, cy + 1, 0xFF555555);
@@ -185,13 +184,13 @@ public class TradeIncomingScreen
             String tag = "x" + hat.count;
             int tw = font.width(tag);
             g.fill(cx + CELL_W - tw - 4, cy + CELL_H - 11, cx + CELL_W - 1, cy + CELL_H - 1, 0xCC1A4A8A);
-            g.drawString(font, tag, cx + CELL_W - tw - 2, cy + CELL_H - 10, 0xFFFFFFFF, false);
+            g.text(font, tag, cx + CELL_W - tw - 2, cy + CELL_H - 10, 0xFFFFFFFF, false);
         }
 
         drawScrollingName(g, hat.name, cx, cy + CELL_H + 1, CELL_W, 0xFFDDDDDD);
     }
 
-    private void drawScrollingName(GuiGraphics g, String s, int xPos, int yPos, int availW, int color)
+    private void drawScrollingName(GuiGraphicsExtractor g, String s, int xPos, int yPos, int availW, int color)
     {
         float sc = 0.7f;
         int textW = (int)(font.width(s) * sc);
@@ -213,11 +212,11 @@ public class TradeIncomingScreen
         }
 
         g.enableScissor(xPos, yPos - 1, xPos + availW, yPos + (int)(font.lineHeight * sc) + 1);
-        g.pose().pushPose();
-        g.pose().translate(xPos + xOff, yPos, 0);
-        g.pose().scale(sc, sc, 1f);
-        g.drawString(font, s, 0, 0, color, false);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(xPos + xOff, yPos);
+        g.pose().scale(sc, sc);
+        g.text(font, s, 0, 0, color, false);
+        g.pose().popMatrix();
         g.disableScissor();
     }
 
@@ -253,13 +252,13 @@ public class TradeIncomingScreen
     }
 
     @Override
-    protected void renderBlurredBackground(float partialTick)
+    protected void extractBlurredBackground(GuiGraphicsExtractor graphics)
     {
         // disable 1.21+ menu-blur effect over the world
     }
 
     @Override
-    protected void renderMenuBackground(GuiGraphics g)
+    protected void extractMenuBackground(GuiGraphicsExtractor g)
     {
         // skip the in-world dark dirt-pattern overlay
     }

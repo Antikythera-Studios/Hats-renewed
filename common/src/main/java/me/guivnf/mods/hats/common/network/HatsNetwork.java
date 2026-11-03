@@ -5,33 +5,33 @@ import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
 import me.guivnf.mods.hats.HatsMod;
 import me.guivnf.mods.hats.common.network.packet.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class HatsNetwork
 {
-    public static final ResourceLocation SYNC_ENTITY_HAT        = id("sync_entity_hat");
-    public static final ResourceLocation SYNC_PLAYER_INVENTORY  = id("sync_player_inventory");
-    public static final ResourceLocation HAT_MANIFEST           = id("hat_manifest");
-    public static final ResourceLocation REQUEST_HAT_DATA       = id("request_hat_data");
-    public static final ResourceLocation HAT_DATA_FRAGMENT      = id("hat_data_fragment");
-    public static final ResourceLocation HAT_CUSTOMISATION      = id("hat_customisation");
-    public static final ResourceLocation OPEN_HATS_GUI          = id("open_hats_gui");
-    public static final ResourceLocation GIVE_HAT               = id("give_hat");
-    public static final ResourceLocation NEW_HAT_TOAST          = id("new_hat_toast");
-    public static final ResourceLocation LAUNCH_HAT             = id("launch_hat");
+    public static final Identifier SYNC_ENTITY_HAT        = id("sync_entity_hat");
+    public static final Identifier SYNC_PLAYER_INVENTORY  = id("sync_player_inventory");
+    public static final Identifier HAT_MANIFEST           = id("hat_manifest");
+    public static final Identifier REQUEST_HAT_DATA       = id("request_hat_data");
+    public static final Identifier HAT_DATA_FRAGMENT      = id("hat_data_fragment");
+    public static final Identifier HAT_CUSTOMISATION      = id("hat_customisation");
+    public static final Identifier OPEN_HATS_GUI          = id("open_hats_gui");
+    public static final Identifier GIVE_HAT               = id("give_hat");
+    public static final Identifier NEW_HAT_TOAST          = id("new_hat_toast");
+    public static final Identifier LAUNCH_HAT             = id("launch_hat");
 
-    public static final ResourceLocation REQUEST_NEARBY_PLAYERS = id("request_nearby_players");
-    public static final ResourceLocation NEARBY_PLAYERS_LIST    = id("nearby_players_list");
-    public static final ResourceLocation REQUEST_PEER_INVENTORY = id("request_peer_inventory");
-    public static final ResourceLocation PEER_INVENTORY         = id("peer_inventory");
-    public static final ResourceLocation SEND_TRADE_OFFER       = id("send_trade_offer");
-    public static final ResourceLocation RESPOND_TRADE_OFFER    = id("respond_trade_offer");
-    public static final ResourceLocation INCOMING_TRADE_OFFER   = id("incoming_trade_offer");
-    public static final ResourceLocation TRADE_RESOLVED         = id("trade_resolved");
-    public static final ResourceLocation TRADE_OFFER_REVOKED    = id("trade_offer_revoked");
-    public static final ResourceLocation TRADE_PARTNER_LEFT     = id("trade_partner_left");
-    public static final ResourceLocation TRADE_ERROR            = id("trade_error");
-    public static final ResourceLocation CLOSE_TRADE_BUILDER    = id("close_trade_builder");
+    public static final Identifier REQUEST_NEARBY_PLAYERS = id("request_nearby_players");
+    public static final Identifier NEARBY_PLAYERS_LIST    = id("nearby_players_list");
+    public static final Identifier REQUEST_PEER_INVENTORY = id("request_peer_inventory");
+    public static final Identifier PEER_INVENTORY         = id("peer_inventory");
+    public static final Identifier SEND_TRADE_OFFER       = id("send_trade_offer");
+    public static final Identifier RESPOND_TRADE_OFFER    = id("respond_trade_offer");
+    public static final Identifier INCOMING_TRADE_OFFER   = id("incoming_trade_offer");
+    public static final Identifier TRADE_RESOLVED         = id("trade_resolved");
+    public static final Identifier TRADE_OFFER_REVOKED    = id("trade_offer_revoked");
+    public static final Identifier TRADE_PARTNER_LEFT     = id("trade_partner_left");
+    public static final Identifier TRADE_ERROR            = id("trade_error");
+    public static final Identifier CLOSE_TRADE_BUILDER    = id("close_trade_builder");
 
     public static void register()
     {
@@ -87,8 +87,8 @@ public class HatsNetwork
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, TRADE_ERROR,          PacketTradeError::handle);
     }
 
-    private static ResourceLocation id(String path)
+    private static Identifier id(String path)
     {
-        return ResourceLocation.fromNamespaceAndPath(HatsMod.MOD_ID, path);
+        return Identifier.fromNamespaceAndPath(HatsMod.MOD_ID, path);
     }
 }

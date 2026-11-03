@@ -9,6 +9,7 @@ import me.guivnf.mods.hats.client.render.HatTextureManager;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 public class ClientEventHandler
@@ -29,7 +30,8 @@ public class ClientEventHandler
 
     public static void register()
     {
-        KEY_OPEN_HATS = new KeyMapping("key.hats.open_menu", GLFW.GLFW_KEY_H, "key.categories.hats");
+        KEY_OPEN_HATS = new KeyMapping("key.hats.open_menu", GLFW.GLFW_KEY_H,
+            new KeyMapping.Category(Identifier.fromNamespaceAndPath("hats", "hats")));
         KeyMappingRegistry.register(KEY_OPEN_HATS);
 
         ClientTickEvent.CLIENT_PRE.register(ClientEventHandler::onClientTick);
