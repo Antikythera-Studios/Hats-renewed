@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 20.1.3 - 2026-11-02
+
+### Fixed
+  - Players with arrows stuck in them showed a second copy of their hat that floated and moved strangely.
+
+---
+
 ## 20.1.2 - 2026-10-11
 
 ### Added
