@@ -38,14 +38,6 @@ public class MixinEntityRenderDispatcher
     private static final float Z_FIGHT_INFLATE  = 1.012f;
     private static final float HEAD_HALF_OFFSET = 4.0f / 16.0f;
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void hats$resetFlag(Entity entity, double camX, double camY, double camZ,
-            float yRot, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
-            int packedLight, CallbackInfo ci)
-    {
-        LayerHat.HAT_RENDERED_THIS_ENTITY.set(false);
-    }
-
     @Inject(method = "render",
             at = @At(value = "INVOKE",
                      target = "Lnet/minecraft/client/renderer/entity/EntityRenderer;render(Lnet/minecraft/world/entity/Entity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
@@ -54,7 +46,7 @@ public class MixinEntityRenderDispatcher
             float yRot, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
             int packedLight, CallbackInfo ci)
     {
-        if (LayerHat.HAT_RENDERED_THIS_ENTITY.get()) return;
+        if (LayerHat.consumeLayerRendered(entity)) return;
         if (!(entity instanceof LivingEntity living)) return;
         if (LayerHat.isOwnFirstPersonView(entity)) return;
 
